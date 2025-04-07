@@ -1,0 +1,142 @@
+{
+  "id": "template_001",
+  "name": "通用大模型备案模板",
+  "type": "生成合成类",
+  "nodes": [
+    {
+      "id": "algorithm",
+      "name": "算法基础属性信息",
+      "fields": [
+        {
+          "id": "algorithm_type",
+          "label": "算法类型",
+          "type": "input",
+          "required": true,
+          "example": "例如：生成式对话模型",
+          "guide": "请输入算法的具体类型",
+          "props": {
+            "allowClear": true
+          }
+        },
+        {
+          "id": "algorithm_name",
+          "label": "算法名称",
+          "type": "input",
+          "required": true,
+          "example": "例如：ChatGPT",
+          "guide": "请输入算法的名称",
+          "props": {
+            "allowClear": true
+          }
+        },
+        {
+          "id": "launch_time",
+          "label": "上线时间",
+          "type": "date",
+          "required": true,
+          "example": "",
+          "guide": "请选择算法的上线时间",
+          "props": {}
+        },
+        {
+          "id": "version",
+          "label": "版本号",
+          "type": "input",
+          "required": false,
+          "example": "例如：v1.0.0",
+          "guide": "请输入算法的版本号，选填",
+          "props": {
+            "allowClear": true
+          }
+        },
+        {
+          "id": "application_fields",
+          "label": "应用领域",
+          "type": "checkbox",
+          "required": false,
+          "example": "",
+          "guide": "请选择算法的应用领域，可多选",
+          "props": {
+            "options": [
+              {
+                "label": "网络销售类",
+                "value": "ecommerce",
+                "children": [
+                  { "label": "综合商品交易", "value": "ecommerce_general" },
+                  { "label": "垂直商品交易", "value": "ecommerce_vertical" },
+                  { "label": "商超团购", "value": "ecommerce_group" }
+                ]
+              },
+              {
+                "label": "生活服务类",
+                "value": "life_service",
+                "children": [
+                  { "label": "出行服务", "value": "life_transport" },
+                  { "label": "旅游服务", "value": "life_travel" },
+                  { "label": "配送服务", "value": "life_delivery" },
+                  { "label": "家政服务", "value": "life_housekeeping" },
+                  { "label": "房屋经纪", "value": "life_real_estate" }
+                ]
+              },
+              {
+                "label": "社交娱乐类",
+                "value": "social",
+                "children": [
+                  { "label": "即时通讯", "value": "social_im" },
+                  { "label": "游戏休闲", "value": "social_gaming" },
+                  { "label": "视听服务", "value": "social_media" },
+                  { "label": "直播视频", "value": "social_live" },
+                  { "label": "短视频", "value": "social_short_video" },
+                  { "label": "文学", "value": "social_literature" }
+                ]
+              },
+              {
+                "label": "信息资讯类",
+                "value": "information",
+                "children": [
+                  { "label": "新闻门户", "value": "info_portal" },
+                  { "label": "搜索引擎", "value": "info_search" },
+                  { "label": "用户内容生成（UGC）", "value": "info_ugc" },
+                  { "label": "视听资讯", "value": "info_media" },
+                  { "label": "新闻机构", "value": "info_news" }
+                ]
+              },
+              {
+                "label": "金融服务类",
+                "value": "finance",
+                "children": [
+                  { "label": "综合金融服务", "value": "finance_general" },
+                  { "label": "支付结算", "value": "finance_payment" },
+                  { "label": "消费金融", "value": "finance_consumer" },
+                  { "label": "金融资讯", "value": "finance_info" },
+                  { "label": "证券投资", "value": "finance_security" }
+                ]
+              },
+              {
+                "label": "计算应用类",
+                "value": "computing",
+                "children": [
+                  { "label": "智能终端", "value": "comp_terminal" },
+                  { "label": "操作系统", "value": "comp_os" },
+                  {
+                    "label": "手机软件（APP）应用商店",
+                    "value": "comp_app_store"
+                  },
+                  { "label": "信息管理", "value": "comp_info_management" },
+                  { "label": "云计算", "value": "comp_cloud" },
+                  { "label": "网络服务", "value": "comp_network" },
+                  { "label": "工业互联网", "value": "comp_industrial" }
+                ]
+              },
+              {
+                "label": "其他",
+                "value": "other",
+                "children": [{ "label": "其他", "value": "other_general" }]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
