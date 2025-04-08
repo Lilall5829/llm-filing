@@ -31,11 +31,11 @@
           </template>
           <span>任务看板</span>
         </a-menu-item>
-        <a-menu-item key="admin-change-password" @click="$router.push({ name: 'admin-change-password' })">
+        <a-menu-item key="application-management" @click="$router.push({ name: 'application-management' })">
           <template #icon>
             <KeyOutlined />
           </template>
-          <span>修改密码</span>
+          <span>申请管理</span>
         </a-menu-item>
         <a-menu-item key="logout" @click="logout">
           <template #icon>

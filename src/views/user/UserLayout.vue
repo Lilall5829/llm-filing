@@ -19,13 +19,6 @@
         >
           <span>备案中心</span>
         </div>
-        <div
-          class="menu-item"
-          :class="{ active: $route.name === 'user-change-password' }"
-          @click="$router.push({ name: 'user-change-password' })"
-        >
-          <span>修改密码</span>
-        </div>
         <div class="menu-item" @click="logout">
           <span>退出登录</span>
         </div>

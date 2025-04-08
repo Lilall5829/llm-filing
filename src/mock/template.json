@@ -137,6 +137,136 @@
           }
         }
       ]
+    },
+    {
+      "id": "risk",
+      "name": "风险评估信息",
+      "fields": [
+        {
+          "id": "risk_type",
+          "label": "风险类型",
+          "type": "select",
+          "required": true,
+          "example": "",
+          "guide": "请选择算法可能存在的风险类型",
+          "props": {
+            "allowClear": true,
+            "options": [
+              { "label": "信息安全风险", "value": "security_risk" },
+              { "label": "数据隐私风险", "value": "privacy_risk" },
+              { "label": "内容生成风险", "value": "content_risk" },
+              { "label": "决策偏见风险", "value": "bias_risk" },
+              { "label": "适用性风险", "value": "applicability_risk" }
+            ]
+          }
+        },
+        {
+          "id": "assessment_method",
+          "label": "评估方法",
+          "type": "textarea",
+          "required": true,
+          "example": "例如：通过红蓝对抗测试、渗透测试等方式进行评估",
+          "guide": "请描述风险评估采用的方法和流程",
+          "props": {
+            "allowClear": true,
+            "rows": 4
+          }
+        },
+        {
+          "id": "control_measures",
+          "label": "风险控制措施",
+          "type": "textarea",
+          "required": true,
+          "example": "例如：建立内容审核机制、设置敏感词过滤、用户反馈渠道等",
+          "guide": "请详细描述针对各类风险采取的控制措施",
+          "props": {
+            "allowClear": true,
+            "rows": 4
+          }
+        },
+        {
+          "id": "evaluation_frequency",
+          "label": "评估频率",
+          "type": "select",
+          "required": false,
+          "example": "",
+          "guide": "请选择风险评估的定期频率",
+          "props": {
+            "allowClear": true,
+            "options": [
+              { "label": "每周", "value": "weekly" },
+              { "label": "每月", "value": "monthly" },
+              { "label": "每季度", "value": "quarterly" },
+              { "label": "每半年", "value": "semi_annually" },
+              { "label": "每年", "value": "annually" },
+              { "label": "不定期", "value": "irregular" }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "governance",
+      "name": "治理结构信息",
+      "fields": [
+        {
+          "id": "responsible_person",
+          "label": "负责人",
+          "type": "input",
+          "required": true,
+          "example": "例如：张三",
+          "guide": "请输入算法治理负责人姓名",
+          "props": {
+            "allowClear": true
+          }
+        },
+        {
+          "id": "contact_info",
+          "label": "联系方式",
+          "type": "input",
+          "required": true,
+          "example": "例如：zhangsan@example.com",
+          "guide": "请输入负责人的联系方式（邮箱或电话）",
+          "props": {
+            "allowClear": true
+          }
+        },
+        {
+          "id": "department",
+          "label": "所属部门",
+          "type": "input",
+          "required": true,
+          "example": "例如：技术安全部",
+          "guide": "请输入负责人所属部门",
+          "props": {
+            "allowClear": true
+          }
+        },
+        {
+          "id": "governance_structure",
+          "label": "治理架构",
+          "type": "textarea",
+          "required": true,
+          "example": "例如：由技术、法务、安全等部门组成的跨部门管理委员会",
+          "guide": "请描述算法治理的组织架构和决策流程",
+          "props": {
+            "allowClear": true,
+            "rows": 4
+          }
+        },
+        {
+          "id": "emergency_plan",
+          "label": "应急预案",
+          "type": "textarea",
+          "required": false,
+          "example": "例如：当发现算法存在重大安全隐患时，启动应急响应机制...",
+          "guide": "请描述在发现算法问题时的应急处理预案",
+          "props": {
+            "allowClear": true,
+            "rows": 4
+          }
+        }
+      ]
     }
   ]
 }
