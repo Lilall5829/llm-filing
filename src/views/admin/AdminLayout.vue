@@ -37,7 +37,7 @@
           </template>
           <span>申请管理</span>
         </a-menu-item>
-        <a-menu-item key="logout" @click="logout">
+        <a-menu-item key="logout" @click="handleLogout">
           <template #icon>
             <LogoutOutlined />
           </template>
@@ -50,7 +50,7 @@
         <div class="current-user">
           <a-space>
             <UserOutlined />
-            <span>您好，管理员</span>
+            <span>您好，{{ adminName }}</span>
           </a-space>
         </div>
       </a-layout-header>
@@ -69,20 +69,51 @@ KeyOutlined,
 LogoutOutlined,
 UserOutlined
 } from '@ant-design/icons-vue';
-import { ref, watch } from 'vue';
+import { message } from 'ant-design-vue';
+import { onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { checkSession, logout } from '../../api/auth';
 
 const router = useRouter();
 const route = useRoute();
 const selectedKeys = ref([route.name]);
+const adminName = ref('管理员');
 
 watch(() => route.name, (newName) => {
   selectedKeys.value = [newName];
 });
 
-const logout = () => {
-  // 这里可以添加登出逻辑
-  router.push('/login');
+// 检查用户登录状态并获取用户信息
+onMounted(async () => {
+  try {
+    const isLoggedIn = await checkSession();
+    if (!isLoggedIn) {
+      message.error('您的登录已过期，请重新登录');
+      router.push('/login');
+      return;
+    }
+    
+    // 从localStorage获取用户信息
+    const userName = localStorage.getItem('userName');
+    if (userName) {
+      adminName.value = userName;
+    }
+  } catch (error) {
+    console.error('会话验证失败:', error);
+  }
+});
+
+// 退出登录函数
+const handleLogout = async () => {
+  try {
+    // 调用登出函数 - 目前只在前端清除token
+    await logout();
+    message.success('退出登录成功');
+    router.push('/login');
+  } catch (error) {
+    console.error('退出登录失败:', error);
+    message.error('退出登录失败，请重试');
+  }
 };
 </script>
 

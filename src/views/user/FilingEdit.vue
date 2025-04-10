@@ -162,11 +162,11 @@
 <script setup>
 import templateData from '@/mock/template.json';
 import {
-  CheckOutlined,
-  SaveOutlined
+CheckOutlined,
+SaveOutlined
 } from '@ant-design/icons-vue';
 import { message } from 'ant-design-vue';
-import { onBeforeMount, onMounted, reactive, ref, computed, watch } from 'vue';
+import { computed, onBeforeMount, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();

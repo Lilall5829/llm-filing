@@ -100,6 +100,39 @@ router.beforeEach((to, from, next) => {
   document.title = to.meta.title
     ? `${to.meta.title} - 大模型备案信息填报系统`
     : "大模型备案信息填报系统";
+
+  // 获取用户信息和token
+  const token = localStorage.getItem("token");
+  const userRole = localStorage.getItem("userRole");
+
+  // 如果访问登录页面，直接放行
+  if (to.path === "/login") {
+    // 如果已登录且在访问登录页，重定向到对应的首页
+    if (token) {
+      return next(userRole === "admin" ? "/admin" : "/user");
+    }
+    return next();
+  }
+
+  // 需要登录的页面
+  if (!token) {
+    // 未登录，重定向到登录页
+    return next("/login");
+  }
+
+  // 根据用户角色进行页面权限控制
+  if (to.path.startsWith("/admin")) {
+    // 管理员页面，检查是否为管理员
+    if (userRole !== "admin") {
+      // 非管理员用户尝试访问管理员页面，重定向到用户首页
+      return next("/user");
+    }
+  } else if (to.path.startsWith("/user")) {
+    // 用户页面，无需特殊检查
+    // 但如果管理员访问用户页面，也允许
+  }
+
+  // 默认放行
   next();
 });
 

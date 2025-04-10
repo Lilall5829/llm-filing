@@ -2,7 +2,7 @@
   <div class="login-container">
     <div class="login-form">
       <h1>欢迎登录</h1>
-      <h3>账号密码登录</h3>
+      <h3>{{ isAdminMode ? '管理员登录' : '用户登录' }}</h3>
       <a-form
         :model="formState"
         name="loginForm"
@@ -10,41 +10,31 @@
         autocomplete="off"
       >
         <a-form-item
-          name="phone"
-          :rules="[{ required: true, message: '请输入手机号' }]"
+          name="username"
+          :rules="[{ required: true, message: '请输入账号' }]"
         >
-          <a-input v-model:value="formState.phone" placeholder="请输入手机号" size="large" />
+          <a-input 
+            v-model:value="formState.username" 
+            placeholder="请输入账号" 
+            size="large"
+          />
         </a-form-item>
 
         <a-form-item
-          name="verificationCode"
-          :rules="[{ required: true, message: '请输入验证码' }]"
+          name="password"
+          :rules="[{ required: true, message: '请输入密码' }]"
         >
-          <a-row :gutter="8">
-            <a-col :span="16">
-              <a-input
-                v-model:value="formState.verificationCode"
-                placeholder="请输入验证码"
-                size="large"
-              />
-            </a-col>
-            <a-col :span="8">
-              <a-button 
-                size="large" 
-                @click="getVerificationCode" 
-                :loading="isGettingCode"
-                :disabled="isGettingCode"
-              >
-                {{ codeButtonText }}
-              </a-button>
-            </a-col>
-          </a-row>
+          <a-input-password
+            v-model:value="formState.password"
+            placeholder="请输入密码"
+            size="large"
+          />
         </a-form-item>
 
         <a-form-item name="remember">
           <a-checkbox v-model:checked="formState.remember">记住我</a-checkbox>
-          <a class="login-form-forgot" @click="handleForgotCode">
-            收不到验证码？
+          <a class="login-form-forgot" @click="handleForgotPassword">
+            忘记密码？
           </a>
         </a-form-item>
 
@@ -60,26 +50,31 @@
             登录
           </a-button>
         </a-form-item>
+
+        <div class="login-mode-switch">
+          <a @click="toggleLoginMode">
+            {{ isAdminMode ? '普通用户登录' : '管理员登录' }}
+          </a>
+        </div>
       </a-form>
     </div>
   </div>
 </template>
 
 <script setup>
-import { checkSession, getVerificationCode as getCode, login } from '@/api/auth';
+import { adminLogin, checkSession, login } from '@/api/auth';
 import { message } from 'ant-design-vue';
 import { onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 const router = useRouter();
+const route = useRoute();
 const isLoading = ref(false);
-const isGettingCode = ref(false);
-const codeButtonText = ref('获取验证码');
-let codeCountdown = null;
+const isAdminMode = ref(false);
 
 const formState = reactive({
-  phone: '',
-  verificationCode: '',
+  username: '',
+  password: '',
   remember: true,
 });
 
@@ -89,65 +84,121 @@ const checkLoginStatus = async () => {
     const isLoggedIn = await checkSession();
     if (isLoggedIn) {
       message.success('检测到已登录状态，正在跳转...');
-      router.push('/');
+      
+      // 根据登录前的路径或角色决定跳转位置
+      const redirectPath = route.query.redirect || '/';
+      router.push(redirectPath);
     }
   } catch (error) {
     console.error('Session check failed:', error);
   }
 };
 
-// 组件挂载时检查登录状态
+// 加载记住的账号
+const loadRememberedAccount = () => {
+  const rememberedUsername = localStorage.getItem('rememberedUsername');
+  const rememberedPassword = localStorage.getItem('rememberedPassword');
+  
+  if (rememberedUsername) {
+    formState.username = rememberedUsername;
+  }
+  
+  if (rememberedPassword) {
+    formState.password = rememberedPassword;
+    formState.remember = true;
+  }
+};
+
+// 组件挂载时检查登录状态和模式
 onMounted(() => {
+  // 检查是否为管理员登录模式
+  isAdminMode.value = route.query.mode === 'admin';
+  // 加载已记住的账号
+  loadRememberedAccount();
+  // 检查登录状态
   checkLoginStatus();
 });
 
-const startCodeCountdown = () => {
-  let count = 60;
-  codeButtonText.value = `${count}秒后重试`;
-  codeCountdown = setInterval(() => {
-    count -= 1;
-    if (count <= 0) {
-      clearInterval(codeCountdown);
-      codeButtonText.value = '获取验证码';
-      isGettingCode.value = false;
-    } else {
-      codeButtonText.value = `${count}秒后重试`;
-    }
-  }, 1000);
-};
-
-const getVerificationCode = async () => {
-  if (!formState.phone) {
-    message.error('请先输入手机号');
+const handleFinish = async () => {
+  if (!formState.username || !formState.password) {
+    message.error('请输入账号和密码');
     return;
   }
 
   try {
-    isGettingCode.value = true;
-    await getCode(formState.phone);
-    message.success('验证码已发送');
-    startCodeCountdown();
-  } catch (error) {
-    message.error('获取验证码失败，请稍后重试');
-    isGettingCode.value = false;
-  }
-};
-
-const handleFinish = async () => {
-  try {
     isLoading.value = true;
-    const result = await login(formState.phone, formState.verificationCode);
-    message.success('登录成功');
-    router.push('/');
+    
+    // 登录数据
+    const loginData = {
+      loginName: formState.username,
+      password: formState.password
+    };
+    
+    console.log("登录数据:", loginData);
+    console.log("登录模式:", isAdminMode.value ? "管理员登录" : "用户登录");
+    
+    // 使用登录API
+    const loginFn = isAdminMode.value ? adminLogin : login;
+    const response = await loginFn(loginData);
+    
+    console.log("登录响应:", response);
+    
+    // 保存token - 根据文档LoginResponseDto结构
+    if (response.data && response.data.token) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('userRole', response.data.role === 1 ? 'admin' : 'user');
+      localStorage.setItem('userId', response.data.userId);
+      localStorage.setItem('userName', response.data.userName);
+      
+      // 如果用户选择"记住我"，保存账号和密码
+      if (formState.remember) {
+        localStorage.setItem('rememberedUsername', formState.username);
+        localStorage.setItem('rememberedPassword', formState.password);
+      } else {
+        localStorage.removeItem('rememberedUsername');
+        localStorage.removeItem('rememberedPassword');
+      }
+      
+      message.success('登录成功');
+      
+      // 根据用户角色决定跳转位置
+      const redirectPath = response.data.role === 1 ? '/admin' : '/user';
+      router.push(redirectPath);
+    } else {
+      throw new Error('登录响应缺少必要信息');
+    }
   } catch (error) {
-    message.error('登录失败，请检查手机号和验证码是否正确');
+    console.error('登录失败:', error);
+    
+    // 获取并显示详细错误信息
+    let errorMsg = '登录失败，请检查账号和密码是否正确';
+    
+    if (error.response && error.response.data) {
+      errorMsg = error.response.data.message || errorMsg;
+    } else if (error.message) {
+      errorMsg = error.message;
+    }
+    
+    message.error(errorMsg);
   } finally {
     isLoading.value = false;
   }
 };
 
-const handleForgotCode = () => {
-  message.info('请联系管理员协助处理');
+const handleForgotPassword = () => {
+  message.info('请联系管理员重置密码');
+};
+
+const toggleLoginMode = () => {
+  isAdminMode.value = !isAdminMode.value;
+  // 更新URL以反映登录模式
+  const query = { ...route.query };
+  if (isAdminMode.value) {
+    query.mode = 'admin';
+  } else {
+    delete query.mode;
+  }
+  router.replace({ path: route.path, query });
 };
 </script>
 
@@ -191,5 +242,16 @@ h3 {
 
 .login-form-button {
   margin-top: 16px;
+}
+
+.login-mode-switch {
+  margin-top: 16px;
+  text-align: center;
+}
+
+.login-mode-switch a {
+  color: #1890ff;
+  cursor: pointer;
+  text-decoration: underline;
 }
 </style> 

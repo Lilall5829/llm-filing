@@ -19,7 +19,7 @@
         >
           <span>备案中心</span>
         </div>
-        <div class="menu-item" @click="logout">
+        <div class="menu-item" @click="handleLogout">
           <span>退出登录</span>
         </div>
       </div>
@@ -27,7 +27,7 @@
     <div class="main-content">
       <div class="header">
         <div class="current-user">
-          <span>您好，用户</span>
+          <span>您好，{{ userName }}</span>
         </div>
       </div>
       <div class="content">
@@ -38,13 +38,32 @@
 </template>
 
 <script setup>
+import { logout } from '@/api/auth';
+import { message } from 'ant-design-vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
+const userName = ref('用户');
 
-const logout = () => {
-  // 这里可以添加登出逻辑
-  router.push('/login');
+onMounted(() => {
+  // 获取用户名
+  const storedUserName = localStorage.getItem('userName');
+  if (storedUserName) {
+    userName.value = storedUserName;
+  }
+});
+
+const handleLogout = async () => {
+  try {
+    // 调用登出函数
+    await logout();
+    message.success('退出登录成功');
+    router.push('/login');
+  } catch (error) {
+    console.error('退出登录失败:', error);
+    message.error('退出登录失败，请重试');
+  }
 };
 </script>
 
