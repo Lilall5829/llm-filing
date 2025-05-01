@@ -6,26 +6,37 @@
       </div>
       <div class="search-section">
         <a-input-search
-          placeholder="搜索备案"
+          v-model:value="searchText"
+          placeholder="搜索模板名称"
           style="width: 200px;"
-          @search="onSearch"
+          @search="handleSearch"
+          :loading="searchLoading"
         />
       </div>
     </div>
     
-    <a-row :gutter="[16, 16]" class="template-container">
-      <a-col :xs="24" :sm="24" :md="12" :lg="8" v-for="(template, index) in templates" :key="index">
+    <div class="loading-container" v-if="loading">
+      <a-spin tip="加载模板中..."></a-spin>
+    </div>
+    
+    <a-empty v-else-if="templates.length === 0" description="暂无可用模板" />
+    
+    <a-row :gutter="[16, 16]" class="template-container" v-else>
+      <a-col :xs="24" :sm="24" :md="12" :lg="8" v-for="template in templates" :key="template.id">
         <a-card class="template-card" hoverable>
           <template #title>
-            <div class="card-title">{{ template.title }}</div>
+            <div class="card-title">{{ template.templateName }}</div>
           </template>
           
           <div class="card-content">
-            <div class="template-intro">模板简介</div>
-            <div class="template-applies">适用于：</div>
-            <ul class="situation-list">
-              <li v-for="(situation, idx) in template.situations" :key="idx">{{ situation }}</li>
-            </ul>
+            <div class="template-info">
+              <p><strong>模板编号：</strong>{{ template.templateCode || '无' }}</p>
+              <p><strong>模板类型：</strong>{{ template.templateType || '未分类' }}</p>
+              <p v-if="template.templateDescription" class="description">
+                <strong>模板描述：</strong>{{ template.templateDescription }}
+              </p>
+              <p><strong>更新时间：</strong>{{ formatDate(template.updateTime) }}</p>
+            </div>
           </div>
           
           <template #extra>
@@ -33,11 +44,27 @@
               type="primary" 
               @click="handleApply(template)"
               :loading="submittingId === template.id"
-            >申请</a-button>
+              :disabled="isTemplateApplied(template.id)"
+            >
+              {{ isTemplateApplied(template.id) ? '已申请' : '申请' }}
+            </a-button>
           </template>
         </a-card>
       </a-col>
     </a-row>
+
+    <a-pagination
+      v-if="templates.length > 0"
+      class="pagination"
+      :current="pagination.current"
+      :pageSize="pagination.pageSize" 
+      :total="pagination.total"
+      :showSizeChanger="true"
+      :showQuickJumper="true"
+      :showTotal="total => `共 ${total} 个模板`"
+      @change="handlePageChange"
+      @showSizeChange="handleSizeChange"
+    />
 
     <!-- 确认申请对话框 -->
     <a-modal
@@ -48,54 +75,32 @@
       @cancel="cancelApplication"
       :confirmLoading="confirmLoading"
     >
-      <p>您确定要申请 "{{ selectedTemplate?.title }}" 模板吗？</p>
+      <p>您确定要申请 "{{ selectedTemplate?.templateName }}" 模板吗？</p>
       <p>申请后将提交给管理员进行审核，请耐心等待。</p>
     </a-modal>
   </div>
 </template>
 
 <script setup>
-import { message } from 'ant-design-vue';
-import { ref } from 'vue';
+import { templateAPI, userTemplateAPI } from '@/api';
+import { message, notification } from 'ant-design-vue';
+import { onMounted, reactive, ref } from 'vue';
 
 // 模板数据
-const templates = ref([
-  {
-    id: 1,
-    title: '备案模板一',
-    situations: ['情况1', '情况2', '情况3']
-  },
-  {
-    id: 2,
-    title: '备案模板二',
-    situations: ['情况1', '情况2', '情况3']
-  },
-  {
-    id: 3,
-    title: '备案模板三',
-    situations: ['情况1', '情况2', '情况3']
-  },
-  {
-    id: 4,
-    title: '备案模板一',
-    situations: ['情况1', '情况2', '情况3']
-  },
-  {
-    id: 5,
-    title: '备案模板二',
-    situations: ['情况1', '情况2', '情况3']
-  },
-  {
-    id: 6,
-    title: '备案模板三',
-    situations: ['情况1', '情况2', '情况3']
-  }
-]);
+const templates = ref([]);
+const loading = ref(false);
+const searchLoading = ref(false);
+const searchText = ref('');
+const appliedTemplateIds = ref(new Set()); // 存储已申请的模板ID
 
-// 搜索功能
-const onSearch = (value) => {
-  message.info(`搜索: ${value}`);
-};
+// 分页配置
+const pagination = reactive({
+  current: 1,
+  pageSize: 9,
+  total: 0,
+  showSizeChanger: true,
+  showQuickJumper: true
+});
 
 // 申请状态控制
 const confirmModalVisible = ref(false);
@@ -103,8 +108,88 @@ const confirmLoading = ref(false);
 const selectedTemplate = ref(null);
 const submittingId = ref(null); // 跟踪按钮加载状态的ID
 
+// 获取模板列表
+const fetchTemplates = async (params = {}) => {
+  loading.value = true;
+  
+  try {
+    const searchParams = {
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+      templateName: searchText.value || undefined,
+      ...params
+    };
+    
+    const response = await templateAPI.getTemplateList(searchParams);
+    
+    if (response.data) {
+      templates.value = response.data.records || [];
+      pagination.total = response.data.total || 0;
+    } else {
+      templates.value = [];
+      pagination.total = 0;
+    }
+  } catch (error) {
+    console.error('获取模板列表失败:', error);
+    message.error('获取模板列表失败');
+    templates.value = [];
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 获取用户已申请的模板列表
+const fetchAppliedTemplates = async () => {
+  try {
+    const response = await userTemplateAPI.getAppliedTemplateList({
+      pageNum: 1,
+      pageSize: 100 // 获取足够多记录来确定用户已申请哪些模板
+    });
+    
+    if (response.data && response.data.records) {
+      // 提取已申请的模板ID
+      appliedTemplateIds.value = new Set(
+        response.data.records.map(record => record.templateId)
+      );
+    }
+  } catch (error) {
+    console.error('获取已申请模板列表失败:', error);
+  }
+};
+
+// 搜索功能
+const handleSearch = (value) => {
+  searchText.value = value;
+  pagination.current = 1; // 重置页码
+  fetchTemplates();
+};
+
+// 分页处理
+const handlePageChange = (page, pageSize) => {
+  pagination.current = page;
+  pagination.pageSize = pageSize;
+  fetchTemplates();
+};
+
+// 每页条数变化
+const handleSizeChange = (current, size) => {
+  pagination.current = 1;
+  pagination.pageSize = size;
+  fetchTemplates();
+};
+
+// 检查模板是否已被申请
+const isTemplateApplied = (templateId) => {
+  return appliedTemplateIds.value.has(templateId);
+};
+
 // 处理申请按钮点击
 const handleApply = (template) => {
+  if (isTemplateApplied(template.id)) {
+    message.info('您已申请此模板，请勿重复申请');
+    return;
+  }
+  
   selectedTemplate.value = template;
   confirmModalVisible.value = true;
 };
@@ -115,6 +200,24 @@ const cancelApplication = () => {
   selectedTemplate.value = null;
 };
 
+// 格式化日期
+const formatDate = (dateString) => {
+  if (!dateString) return '未知';
+  
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('zh-CN', { 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  } catch (error) {
+    return dateString;
+  }
+};
+
 // 提交申请
 const submitApplication = async () => {
   if (!selectedTemplate.value) return;
@@ -123,25 +226,32 @@ const submitApplication = async () => {
   submittingId.value = selectedTemplate.value.id;
   
   try {
-    // 这里模拟API调用，实际项目中应替换为真实API
-    // const response = await axios.post('/api/applications', {
-    //   templateId: selectedTemplate.value.id,
-    //   userId: getCurrentUserId(), // 从用户状态获取当前用户ID
-    // });
+    // 使用实际API调用申请模板
+    const userId = localStorage.getItem('userId'); // 从本地存储获取用户ID
     
-    // 模拟网络延迟
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    if (!userId) {
+      throw new Error('用户未登录');
+    }
     
-    // 提交成功后处理
-    message.success(`已成功提交 "${selectedTemplate.value.title}" 申请，请等待管理员审核`);
+    // 调用申请模板API
+    const response = await userTemplateAPI.applyTemplate(
+      selectedTemplate.value.id,
+      [userId]
+    );
     
-    // 可以在这里更新应用状态，例如将这个模板标记为"已申请"
-    // ...
-    
+    if (response.data) {
+      // 申请成功后处理
+      notification.success({
+        message: '申请成功',
+        description: `已成功提交 "${selectedTemplate.value.templateName}" 申请，请等待管理员审核`
+      });
+      
+      // 更新已申请模板列表
+      appliedTemplateIds.value.add(selectedTemplate.value.id);
+    }
   } catch (error) {
-    // 处理错误
-    message.error('申请提交失败，请稍后重试');
-    console.error('Application submission error:', error);
+    console.error('申请提交失败:', error);
+    message.error('申请提交失败: ' + (error.message || '请稍后重试'));
   } finally {
     confirmLoading.value = false;
     submittingId.value = null;
@@ -149,14 +259,23 @@ const submitApplication = async () => {
     selectedTemplate.value = null;
   }
 };
+
+// 初始化页面
+onMounted(async () => {
+  // 获取模板列表
+  await fetchTemplates();
+  
+  // 获取用户已申请的模板列表
+  await fetchAppliedTemplates();
+});
 </script>
 
 <style scoped>
 .filing-application {
-  background-color: #fff;
+  background-color: #f0f2f5;
   padding: 24px;
+  min-height: 100vh;
   border-radius: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   position: relative;
 }
 
@@ -164,7 +283,7 @@ const submitApplication = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 
 .page-title {
@@ -181,6 +300,7 @@ const submitApplication = async () => {
 .template-card {
   height: 100%;
   transition: all 0.3s;
+  background-color: #fff;
 }
 
 .template-card:hover {
@@ -190,30 +310,41 @@ const submitApplication = async () => {
 .card-title {
   font-size: 16px;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .card-content {
-  min-height: 150px;
+  min-height: 160px;
 }
 
-.template-intro {
+.template-info {
   font-size: 14px;
-  margin-bottom: 16px;
 }
 
-.template-applies {
-  font-size: 14px;
+.template-info p {
   margin-bottom: 8px;
 }
 
-.situation-list {
-  list-style-type: disc;
-  padding-left: 20px;
-  color: rgba(0, 0, 0, 0.65);
+.description {
+  max-height: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
 }
 
-.situation-list li {
-  margin-bottom: 4px;
-  font-size: 14px;
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+}
+
+.pagination {
+  margin-top: 24px;
+  text-align: center;
 }
 </style> 

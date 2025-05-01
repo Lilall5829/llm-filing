@@ -70,7 +70,7 @@ const router = createRouter({
           meta: { title: "备案中心" },
         },
         {
-          path: "filing-edit/:id",
+          path: "filing-edit",
           name: "filing-edit",
           component: () => import("../views/user/FilingEdit.vue"),
           meta: { title: "编辑备案" },

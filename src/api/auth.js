@@ -16,9 +16,11 @@ request.interceptors.request.use(
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
+
     return config;
   },
   (error) => {
+    console.error("请求拦截器错误:", error);
     return Promise.reject(error);
   }
 );
@@ -28,12 +30,55 @@ request.interceptors.response.use(
   (response) => {
     const res = response.data;
     if (res.code !== 200) {
+      console.error(
+        `API错误: 业务代码 ${res.code}, 消息: ${res.message || "无错误消息"}`
+      );
+
+      // 特殊错误码处理
+      if (res.code === 401) {
+        console.warn("用户未授权或会话已过期，需要重新登录");
+        // 清除认证信息
+        localStorage.removeItem("token");
+        localStorage.removeItem("userRole");
+        // 可以在这里添加重定向到登录页的逻辑
+      }
+
       // 处理错误情况
       return Promise.reject(new Error(res.message || "请求失败"));
     }
+
     return res;
   },
   (error) => {
+    console.error("API请求失败:", error.message);
+
+    // 详细记录错误
+    if (error.response) {
+      console.error(
+        `服务器响应错误: ${error.response.status} - ${error.response.statusText}`
+      );
+      console.error("错误数据:", error.response.data);
+
+      // 处理特定状态码
+      if (error.response.status === 401) {
+        console.warn("认证失败，清除令牌");
+        localStorage.removeItem("token");
+        localStorage.removeItem("userRole");
+        // 可以添加重定向到登录页的逻辑
+      } else if (error.response.status === 403) {
+        console.warn("权限不足，无法执行操作");
+      } else if (error.response.status === 404) {
+        console.warn("请求的资源不存在");
+      } else if (error.response.status >= 500) {
+        console.error("服务器内部错误");
+      }
+    } else if (error.request) {
+      console.error("请求已发送但未收到响应");
+      console.error("请求详情:", error.request);
+    } else {
+      console.error("请求配置错误:", error.message);
+    }
+
     return Promise.reject(error);
   }
 );

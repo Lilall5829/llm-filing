@@ -11,7 +11,7 @@
           <a-col :xs="24" :sm="12" :md="8" :lg="6">
             <a-form-item label="备案编号">
               <a-input
-                v-model:value="filters.filingNumber"
+                v-model:value="filters.templateCode"
                 placeholder="请输入备案编号"
                 allow-clear
               />
@@ -29,28 +29,21 @@
           </a-col>
           
           <a-col :xs="24" :sm="12" :md="8" :lg="6">
-            <a-form-item label="审核状态">
-              <a-select
-                v-model:value="filters.status"
-                placeholder="请选择审核状态"
+            <a-form-item label="开始日期">
+              <a-date-picker
+                v-model:value="filters.startTime"
                 style="width: 100%"
-                allow-clear
-              >
-                <a-select-option value="">全部</a-select-option>
-                <a-select-option value="blank">未填写</a-select-option>
-                <a-select-option value="draft">未提交</a-select-option>
-                <a-select-option value="reviewing">审核中</a-select-option>
-                <a-select-option value="approved">已通过</a-select-option>
-                <a-select-option value="rejected">未通过</a-select-option>
-              </a-select>
+                placeholder="开始日期"
+              />
             </a-form-item>
           </a-col>
           
           <a-col :xs="24" :sm="12" :md="8" :lg="6">
-            <a-form-item label="创建时间">
+            <a-form-item label="结束日期">
               <a-date-picker
-                v-model:value="filters.createdAt"
+                v-model:value="filters.endTime"
                 style="width: 100%"
+                placeholder="结束日期"
               />
             </a-form-item>
           </a-col>
@@ -85,7 +78,10 @@
         @change="handleTableChange"
         :loading="loading"
         :scroll="{ x: 'max-content' }"
-        :row-key="record => record.id"
+        :row-key="record => {
+          //console.log('表格行键值:', record.id, '类型:', typeof record.id);
+          return record.id;
+        }"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'action'">
@@ -107,11 +103,40 @@
         </template>
       </a-table>
     </a-card>
+
+    <!-- 发送模板对话框 -->
+    <a-modal
+      v-model:visible="sendModalVisible"
+      title="发送模板"
+      @ok="confirmSendTemplate"
+      :confirmLoading="loading"
+      width="700px"
+    >
+      <a-spin :spinning="loading">
+        <p v-if="currentTemplate">将模板「{{ currentTemplate.templateName }}」发送给以下用户：</p>
+        <a-table
+          :columns="[
+            { title: '用户ID', dataIndex: 'id', width: 100 },
+            { title: '用户名', dataIndex: 'userName', width: 150 },
+            { title: '登录名', dataIndex: 'loginName', width: 150 }
+          ]"
+          :data-source="users"
+          :row-selection="{ 
+            selectedRowKeys: selectedUserIds,
+            onChange: handleUserSelectionChange 
+          }"
+          :pagination="{ pageSize: 5 }"
+          :scroll="{ y: 300 }"
+          size="small"
+          :row-key="record => record.id"
+        />
+      </a-spin>
+    </a-modal>
   </div>
 </template>
 
 <script setup>
-import templateData from '@/mock/template.json';
+import { templateAPI, userAPI, userTemplateAPI } from '@/api';
 import {
 DeleteOutlined,
 EditOutlined,
@@ -121,7 +146,7 @@ SearchOutlined,
 SendOutlined
 } from '@ant-design/icons-vue';
 import { Modal, message } from 'ant-design-vue';
-import { h, onMounted, reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const router = useRouter();
@@ -129,42 +154,43 @@ const loading = ref(false);
 
 // 筛选条件
 const filters = reactive({
-  filingNumber: '',
+  templateCode: '',
   templateName: '',
   status: '',
-  createdAt: null
+  startTime: null,
+  endTime: null
 });
 
 // 表格列定义
 const columns = [
   {
     title: '备案编号',
-    dataIndex: 'filingNumber',
-    key: 'filingNumber',
+    dataIndex: 'templateCode',
+    key: 'templateCode',
     width: 120,
   },
   {
     title: '模板名称',
-    dataIndex: 'name',
-    key: 'name',
+    dataIndex: 'templateName',
+    key: 'templateName',
     width: 200,
   },
   {
     title: '模板类型',
-    dataIndex: 'type',
-    key: 'type',
+    dataIndex: 'templateType',
+    key: 'templateType',
     width: 120,
   },
   {
     title: '创建时间',
-    dataIndex: 'createdAt',
-    key: 'createdAt',
+    dataIndex: 'createTime',
+    key: 'createTime',
     width: 180,
   },
   {
     title: '最后修改时间',
-    dataIndex: 'updatedAt',
-    key: 'updatedAt',
+    dataIndex: 'updateTime',
+    key: 'updateTime',
     width: 180,
   },
   {
@@ -177,35 +203,70 @@ const columns = [
 
 // 模板数据
 const templates = ref([]);
+// 用户列表（用于发送模板）
+const users = ref([]);
+// 发送模板对话框
+const sendModalVisible = ref(false);
+// 当前选择的模板（用于发送）
+const currentTemplate = ref(null);
+// 选择的用户ID列表
+const selectedUserIds = ref([]);
 
 // 获取模板列表
 const fetchTemplates = async () => {
   loading.value = true;
   try {
-    // 模拟API调用
-    // 实际项目中这里应该调用后端API
-    const response = await new Promise(resolve => {
-      setTimeout(() => {
-        resolve({
-          data: [
-            {
-              id: templateData.id,
-              filingNumber: 'BAN2023001',
-              name: templateData.name,
-              type: templateData.type,
-              createdAt: '2023-10-01 09:30:45',
-              updatedAt: '2023-10-15 14:20:33'
-            }
-          ]
-        });
-      }, 500);
-    });
-    templates.value = response.data;
+    // 构建查询参数
+    const params = {
+      templateCode: filters.templateCode || undefined,
+      templateName: filters.templateName || undefined,
+      startTime: filters.startTime ? filters.startTime.format('YYYY-MM-DD') : undefined,
+      endTime: filters.endTime ? filters.endTime.format('YYYY-MM-DD') : undefined,
+      pageNum: pagination.current,
+      pageSize: pagination.pageSize,
+      // 添加时间戳参数，避免缓存问题
+      _t: new Date().getTime()
+    };
+    
+    // 调用API获取模板列表
+    const response = await templateAPI.getTemplateList(params);
+    
+    if (response.data) {
+      templates.value = response.data.records || [];
+      pagination.total = response.data.total || 0;
+    } else {
+      console.warn('获取模板列表返回空数据');
+      templates.value = [];
+      pagination.total = 0;
+    }
   } catch (error) {
     console.error('获取模板列表失败:', error);
-    message.error('获取模板列表失败');
+    if (error.response) {
+      console.error('错误响应:', error.response);
+      message.error(`获取模板列表失败: ${error.response.data?.message || error.message}`);
+    } else {
+      message.error(`获取模板列表失败: ${error.message || '未知错误'}`);
+    }
+    templates.value = [];
   } finally {
     loading.value = false;
+  }
+};
+
+// 获取用户列表（用于发送模板）
+const fetchUsers = async () => {
+  try {
+    const response = await userAPI.getUserList({
+      pageNum: 1,
+      pageSize: 100 // 获取足够多的用户
+    });
+    
+    if (response.data && response.data.records) {
+      users.value = response.data.records.filter(user => user.role !== 1); // 过滤出非管理员用户
+    }
+  } catch (error) {
+    console.error('获取用户列表失败:', error);
+    message.error('获取用户列表失败');
   }
 };
 
@@ -213,7 +274,7 @@ const fetchTemplates = async () => {
 const pagination = reactive({
   current: 1,
   pageSize: 10,
-  total: 1,
+  total: 0,
   showSizeChanger: true,
   showQuickJumper: true,
   showTotal: (total) => `共 ${total} 条记录`
@@ -221,22 +282,21 @@ const pagination = reactive({
 
 // 搜索按钮点击事件
 const handleSearch = () => {
-  console.log('搜索条件：', filters);
-  loading.value = true;
-  // 模拟API调用
-  setTimeout(() => {
-    loading.value = false;
-  }, 500);
+  pagination.current = 1; // 重置到第一页
+  fetchTemplates();
 };
 
 // 重置按钮点击事件
 const handleReset = () => {
   Object.assign(filters, {
-    filingNumber: '',
+    templateCode: '',
     templateName: '',
     status: '',
-    createdAt: null
+    startTime: null,
+    endTime: null
   });
+  pagination.current = 1;
+  fetchTemplates();
 };
 
 // 新建模板按钮点击事件
@@ -251,43 +311,115 @@ const handleEdit = (id) => {
 
 // 删除按钮点击事件
 const handleDelete = (id) => {
+  // 验证ID
+  if (!id) {
+    console.error('删除模板失败: 无效的模板ID');
+    message.error('无法删除：模板ID无效');
+    return;
+  }
+
   Modal.confirm({
     title: '确认删除',
-    content: '确定要删除这个模板吗？',
+    content: '确定要删除这个模板吗？此操作不可恢复。',
     okText: '确定',
     okType: 'danger',
     cancelText: '取消',
-    onOk() {
-      console.log('删除模板：', id);
-      // 实际项目中这里应该调用API删除数据
-      templates.value = templates.value.filter(item => item.id !== id);
-      message.success('删除成功');
+    async onOk() {
+      try {
+        loading.value = true;
+        
+        const response = await templateAPI.deleteTemplate(id);
+        
+        if (response && response.code === 200) {
+          message.success(`删除成功，模板ID: ${id}`);
+        } else {
+          console.warn('删除请求异常，响应状态码:', response ? response.code : '无响应');
+          message.warning(`删除状态异常，请检查后台日志`);
+        }
+        
+        // 延迟后强制刷新数据，确保后端删除操作完成
+        setTimeout(async () => {
+          try {
+            // 重置到第一页
+            pagination.current = 1;
+            // 强制刷新数据
+            await fetchTemplates();
+            
+            // 检查删除是否有效 - 验证模板是否从列表中移除
+            const stillExists = templates.value.some(template => template.id === id);
+            if (stillExists) {
+              console.warn('警告: 删除后模板仍然存在于列表中');
+              message.warning('删除可能未完全生效，请刷新页面');
+            }
+          } catch (refreshError) {
+            console.error('刷新数据失败:', refreshError);
+            message.error('刷新数据失败，请手动刷新页面');
+          } finally {
+            loading.value = false;
+          }
+        }, 1000); // 延迟1秒后刷新
+      } catch (error) {
+        console.error('删除模板失败:', error);
+        
+        if (error.response) {
+          console.error('错误响应状态:', error.response.status);
+          message.error(`删除失败: ${error.response.data?.message || error.message}`);
+        } else if (error.request) {
+          console.error('请求已发送但无响应:', error.request);
+          message.error('删除失败: 服务器未响应，请检查网络连接');
+        } else {
+          message.error(`删除失败: ${error.message || '未知错误'}`);
+        }
+        loading.value = false;
+      }
     },
   });
 };
 
-// 发送按钮点击事件
+// 打开发送模板对话框
 const handleSend = (record) => {
-  Modal.confirm({
-    title: '发送模板',
-    content: '请选择要发送的用户',
-    icon: h(SendOutlined),
-    okText: '发送',
-    cancelText: '取消',
-    onOk() {
-      // 这里应该调用API发送模板
-      console.log('发送模板：', record.id);
-      message.success('模板发送成功');
-    },
-  });
+  currentTemplate.value = record;
+  selectedUserIds.value = [];
+  sendModalVisible.value = true;
+  // 获取用户列表
+  fetchUsers();
+};
+
+// 发送模板
+const confirmSendTemplate = async () => {
+  if (!currentTemplate.value || !selectedUserIds.value.length) {
+    message.warning('请选择至少一个用户');
+    return;
+  }
+  
+  try {
+    loading.value = true;
+    // 调用API发送模板
+    await userTemplateAPI.applyTemplate(
+      currentTemplate.value.id,
+      selectedUserIds.value
+    );
+    
+    message.success('模板发送成功');
+    sendModalVisible.value = false;
+  } catch (error) {
+    console.error('发送模板失败:', error);
+    message.error('发送模板失败');
+  } finally {
+    loading.value = false;
+  }
 };
 
 // 表格变化事件
 const handleTableChange = (pag, filters, sorter) => {
-  console.log('表格变化：', pag, filters, sorter);
   pagination.current = pag.current;
   pagination.pageSize = pag.pageSize;
-  // 实际项目中这里应该调用API获取对应页的数据
+  fetchTemplates();
+};
+
+// 用户选择变化
+const handleUserSelectionChange = (selectedRowKeys) => {
+  selectedUserIds.value = selectedRowKeys;
 };
 
 // 组件挂载时获取数据

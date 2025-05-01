@@ -3,192 +3,230 @@
     <div class="filing-edit">
       <div class="header-container">
         <div class="title-section">
-          <h2 class="page-title">编辑备案</h2>
+          <h2 class="page-title">{{ isReadonly ? '查看备案' : '编辑备案' }}</h2>
+          <div class="submission-info" v-if="!isReadonly">
+            <a-tag color="processing">
+              完成进度: {{ completedSteps }} / {{ templateContent.nodes?.length || 0 }} 节点
+            </a-tag>
+          </div>
         </div>
       </div>
 
-      <a-card class="info-card">
-        <a-descriptions title="基本信息" bordered :column="{ xxl: 3, xl: 3, lg: 3, md: 2, sm: 1, xs: 1 }">
-          <a-descriptions-item label="备案编号">{{ filingData.filingNumber }}</a-descriptions-item>
-          <a-descriptions-item label="备案名称">{{ filingData.name }}</a-descriptions-item>
-          <a-descriptions-item label="模板类型">{{ filingData.templateType }}</a-descriptions-item>
-          <a-descriptions-item label="提交时间">{{ filingData.submittedAt || '未提交' }}</a-descriptions-item>
-          <a-descriptions-item label="状态">
-            <a-tag :color="getStatusColor(filingData.status)">
-              {{ getStatusText(filingData.status) }}
-            </a-tag>
-          </a-descriptions-item>
-        </a-descriptions>
-      </a-card>
+      <a-spin :spinning="loading">
+        <a-card class="info-card">
+          <a-descriptions title="基本信息" bordered :column="{ xxl: 3, xl: 3, lg: 3, md: 2, sm: 1, xs: 1 }">
+            <a-descriptions-item label="模板编号">{{ templateInfo.templateCode || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="模板名称">{{ templateInfo.templateName || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="申请时间">{{ templateInfo.createTime || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="更新时间">{{ templateInfo.updateTime || '-' }}</a-descriptions-item>
+            <a-descriptions-item label="状态">
+              <a-tag :color="getStatusColor(templateInfo.status)">
+                {{ templateInfo.statusDesc || getStatusText(templateInfo.status) }}
+              </a-tag>
+            </a-descriptions-item>
+          </a-descriptions>
+        </a-card>
 
-      <!-- 新增节点完成进度组件 -->
-      <a-card class="progress-card">
-        <div class="progress-title">节点完成进度</div>
-        <a-steps class="node-progress" :current="completedSteps">
-          <a-step 
-            v-for="node in template.nodes" 
-            :key="node.id" 
-            :title="node.name"
-            :status="getNodeStatus(node.id)"
-            @click="handleStepClick(node.id)"
-          />
-        </a-steps>
-      </a-card>
+        <!-- 新增节点完成进度组件 -->
+        <a-card class="progress-card" v-if="!loading && templateContent.nodes && templateContent.nodes.length > 0">
+          <div class="progress-title">节点完成进度</div>
+          <a-steps class="node-progress" :current="completedSteps">
+            <a-step 
+              v-for="node in templateContent.nodes" 
+              :key="node.id" 
+              :title="node.name"
+              :status="getNodeStatus(node.id)"
+              @click="handleStepClick(node.id)"
+            />
+          </a-steps>
+        </a-card>
 
-      <a-card class="content-card">
-        <a-tabs v-model:activeKey="activeTabKey">
-          <a-tab-pane 
-            v-for="node in template.nodes" 
-            :key="node.id"
-            :tab="node.name"
-          >
-            <div class="node-content">
-              <a-form
-                :model="nodeForms[node.id]"
-                layout="vertical"
-                :ref="el => formRefs[node.id] = el"
-              >
-                <a-row :gutter="[16, 0]">
-                  <a-col 
-                    v-for="field in node.fields" 
-                    :key="field.id"
-                    :xs="24" 
-                    :sm="field.type === 'textarea' || field.id === 'application_fields' ? 24 : 12"
-                  >
-                    <a-form-item
-                      :label="field.label"
-                      :name="field.id"
-                      :rules="[{ required: field.required, message: `请${field.type === 'select' ? '选择' : '输入'}${field.label}` }]"
+        <a-card class="content-card" v-if="!loading && templateContent.nodes && templateContent.nodes.length > 0">
+          <a-tabs v-model:activeKey="activeTabKey">
+            <a-tab-pane 
+              v-for="node in templateContent.nodes" 
+              :key="node.id"
+              :tab="node.name"
+            >
+              <div class="node-content">
+                <a-form
+                  :model="nodeForms[node.id]"
+                  layout="vertical"
+                  :ref="el => formRefs[node.id] = el"
+                  :disabled="isReadonly"
+                >
+                  <a-row :gutter="[16, 0]">
+                    <a-col 
+                      v-for="field in node.fields" 
+                      :key="field.id"
+                      :xs="24" 
+                      :sm="field.type === 'textarea' || field.id === 'application_fields' ? 24 : 12"
                     >
-                      <template #extra>{{ field.guide }}</template>
-                      
-                      <template v-if="field.type === 'checkbox' && field.id === 'application_fields'">
-                        <div class="application-fields-container">
-                          <a-checkbox-group v-model:value="nodeForms[node.id][field.id]">
-                            <div 
-                              v-for="category in field.props.options" 
-                              :key="category.value"
-                              class="category-group"
-                            >
-                              <div class="category-title">{{ category.label }}</div>
-                              <div class="category-options">
-                                <a-checkbox 
-                                  v-for="child in category.children" 
-                                  :key="child.value"
-                                  :value="child.value"
-                                >
-                                  {{ child.label }}
-                                </a-checkbox>
+                      <a-form-item
+                        :label="field.label"
+                        :name="field.id"
+                        :rules="[{ required: field.required, message: `请${field.type === 'select' ? '选择' : '输入'}${field.label}` }]"
+                      >
+                        <template #extra>{{ field.guide }}</template>
+                        
+                        <template v-if="field.type === 'checkbox' && field.id === 'application_fields'">
+                          <div class="application-fields-container">
+                            <a-checkbox-group v-model:value="nodeForms[node.id][field.id]">
+                              <div 
+                                v-for="category in field.props.options" 
+                                :key="category.value"
+                                class="category-group"
+                              >
+                                <div class="category-title">{{ category.label }}</div>
+                                <div class="category-options">
+                                  <a-checkbox 
+                                    v-for="child in category.children" 
+                                    :key="child.value"
+                                    :value="child.value"
+                                  >
+                                    {{ child.label }}
+                                  </a-checkbox>
+                                </div>
                               </div>
-                            </div>
-                          </a-checkbox-group>
-                        </div>
-                      </template>
-                      
-                      <template v-else-if="field.type === 'input'">
-                        <a-input
-                          v-model:value="nodeForms[node.id][field.id]"
-                          :placeholder="field.example || `请输入${field.label}`"
-                          v-bind="field.props"
-                        />
-                      </template>
-                      
-                      <template v-else-if="field.type === 'select'">
-                        <a-select
-                          v-model:value="nodeForms[node.id][field.id]"
-                          :placeholder="field.example || `请选择${field.label}`"
-                          v-bind="field.props"
-                        >
-                          <a-select-option 
-                            v-for="option in field.props && field.props.options ? field.props.options : []" 
-                            :key="option.value" 
-                            :value="option.value"
+                            </a-checkbox-group>
+                          </div>
+                        </template>
+                        
+                        <template v-else-if="field.type === 'input'">
+                          <a-input
+                            v-model:value="nodeForms[node.id][field.id]"
+                            :placeholder="field.example || `请输入${field.label}`"
+                            v-bind="field.props"
+                          />
+                        </template>
+                        
+                        <template v-else-if="field.type === 'select'">
+                          <a-select
+                            v-model:value="nodeForms[node.id][field.id]"
+                            :placeholder="field.example || `请选择${field.label}`"
+                            v-bind="field.props"
                           >
-                            {{ option.label }}
-                          </a-select-option>
-                        </a-select>
-                      </template>
-                      
-                      <template v-else-if="field.type === 'date'">
-                        <a-date-picker
-                          v-model:value="nodeForms[node.id][field.id]"
-                          :placeholder="field.example || `请选择${field.label}`"
-                          style="width: 100%"
-                          v-bind="field.props"
-                        />
-                      </template>
-                      
-                      <template v-else-if="field.type === 'textarea'">
-                        <a-textarea
-                          v-model:value="nodeForms[node.id][field.id]"
-                          :placeholder="field.example || `请输入${field.label}`"
-                          :rows="4"
-                          v-bind="field.props"
-                        />
-                      </template>
-                      
-                      <template v-else>
-                        <a-input
-                          v-model:value="nodeForms[node.id][field.id]"
-                          :placeholder="field.example || `请输入${field.label}`"
-                          v-bind="field.props"
-                        />
-                      </template>
-                    </a-form-item>
-                  </a-col>
-                </a-row>
-              </a-form>
-            </div>
-          </a-tab-pane>
-        </a-tabs>
-      </a-card>
+                            <a-select-option 
+                              v-for="option in field.props && field.props.options ? field.props.options : []" 
+                              :key="option.value" 
+                              :value="option.value"
+                            >
+                              {{ option.label }}
+                            </a-select-option>
+                          </a-select>
+                        </template>
+                        
+                        <template v-else-if="field.type === 'date'">
+                          <a-date-picker
+                            v-model:value="nodeForms[node.id][field.id]"
+                            :placeholder="field.example || `请选择${field.label}`"
+                            style="width: 100%"
+                            v-bind="field.props"
+                          />
+                        </template>
+                        
+                        <template v-else-if="field.type === 'textarea'">
+                          <a-textarea
+                            v-model:value="nodeForms[node.id][field.id]"
+                            :placeholder="field.example || `请输入${field.label}`"
+                            :rows="4"
+                            v-bind="field.props"
+                          />
+                        </template>
+                        
+                        <template v-else>
+                          <a-input
+                            v-model:value="nodeForms[node.id][field.id]"
+                            :placeholder="field.example || `请输入${field.label}`"
+                            v-bind="field.props"
+                          />
+                        </template>
+                      </a-form-item>
+                    </a-col>
+                  </a-row>
+                </a-form>
+              </div>
+            </a-tab-pane>
+          </a-tabs>
+        </a-card>
 
-      <div class="footer-actions">
-        <a-space size="middle">
-          <a-button type="primary" @click="handleSave" :loading="submitting">
-            <template #icon><SaveOutlined /></template>
-            保存
-          </a-button>
-          <a-button type="primary" @click="handleSubmit" :loading="submitting">
-            <template #icon><CheckOutlined /></template>
-            提交审核
-          </a-button>
-        </a-space>
-      </div>
+        <div v-if="!loading && (!templateContent.nodes || templateContent.nodes.length === 0)" class="empty-content">
+          <a-empty description="暂无模板内容数据">
+            <template #description>
+              <p>抱歉，当前没有可用的模板内容，请联系管理员。</p>
+            </template>
+          </a-empty>
+        </div>
+
+        <div class="footer-actions" v-if="!isReadonly">
+          <a-space size="middle">
+            <a-button type="primary" @click="handleSave" :loading="submitting">
+              <template #icon><SaveOutlined /></template>
+              保存
+            </a-button>
+            <a-button type="primary" @click="handleSubmit" :loading="submitting" 
+                      v-if="canSubmit">
+              <template #icon><CheckOutlined /></template>
+              提交审核
+            </a-button>
+          </a-space>
+        </div>
+
+        <div class="footer-actions" v-else>
+          <a-space size="middle">
+            <a-button @click="goBack">
+              <template #icon><ArrowLeftOutlined /></template>
+              返回
+            </a-button>
+          </a-space>
+        </div>
+      </a-spin>
     </div>
   </div>
 </template>
 
 <script setup>
-import templateData from '@/mock/template.json';
+import { userTemplateAPI } from '@/api';
 import {
+ArrowLeftOutlined,
 CheckOutlined,
 SaveOutlined
 } from '@ant-design/icons-vue';
-import { message } from 'ant-design-vue';
-import { computed, onBeforeMount, onMounted, reactive, ref, watch } from 'vue';
+import { message, Modal } from 'ant-design-vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
 const router = useRouter();
-const filingId = route.params.id;
+const filingId = route.query.id;
+const isReadonly = computed(() => route.query.readonly === 'true');
 const submitting = ref(false);
-const activeTabKey = ref('algorithm');
+const loading = ref(true);
+const activeTabKey = ref('');
 const nodeValidationState = reactive({});
 
-// 模板数据
-const template = reactive({
+// 判断是否可以提交
+// 状态码1=申请通过，3=待填写，4=填写中，7=退回时可以提交
+const canSubmit = computed(() => {
+  const status = Number(templateInfo.status);
+  return [1, 3, 4, 7].includes(status);
+});
+
+// 模板内容
+const templateContent = reactive({
   nodes: []
 });
 
 // 备案数据
-const filingData = reactive({
+const templateInfo = reactive({
   id: '',
-  filingNumber: '',
-  name: '',
-  templateType: '',
-  submittedAt: '',
-  status: 'draft'
+  templateId: '',
+  templateCode: '',
+  templateName: '',
+  createTime: '',
+  updateTime: '',
+  status: '',
+  statusDesc: ''
 });
 
 // 节点表单数据
@@ -212,24 +250,32 @@ const completedSteps = computed(() => {
 
 // 获取状态文本
 const getStatusText = (status) => {
-  switch (status) {
-    case 'draft': return '未提交';
-    case 'pending': return '审核中';
-    case 'approved': return '已通过';
-    case 'rejected': return '未通过';
-    default: return '未知';
-  }
+  const statusMap = {
+    0: '待审核',
+    1: '申请通过',
+    2: '拒绝申请',
+    3: '待填写',
+    4: '填写中',
+    5: '审核中',
+    6: '审核通过',
+    7: '退回'
+  };
+  return statusMap[Number(status)] || '未知';
 };
 
 // 获取状态颜色
 const getStatusColor = (status) => {
-  switch (status) {
-    case 'draft': return 'default';
-    case 'pending': return 'blue';
-    case 'approved': return 'green';
-    case 'rejected': return 'red';
-    default: return 'default';
-  }
+  const statusMap = {
+    0: 'default',   // 待审核
+    1: 'blue',      // 申请通过
+    2: 'red',       // 拒绝申请
+    3: 'orange',    // 待填写
+    4: 'purple',    // 填写中
+    5: 'processing', // 审核中
+    6: 'success',   // 审核通过
+    7: 'error',     // 退回
+  };
+  return statusMap[Number(status)] || 'default';
 };
 
 // 获取节点状态
@@ -242,40 +288,112 @@ const handleStepClick = (nodeId) => {
   activeTabKey.value = nodeId;
 };
 
+// 返回上一页
+const goBack = () => {
+  router.push('/user/filing-center');
+};
+
 // 验证单个节点表单
 const validateNodeForm = async (nodeId) => {
   try {
-    if (formRefs[nodeId]) {
+    if (formRefs[nodeId] && !isReadonly.value) {
       await formRefs[nodeId].validate();
+      nodeValidationState[nodeId] = 'finish';
+      return true;
+    } else if (isReadonly.value) {
+      // 只读模式下直接标记为完成
       nodeValidationState[nodeId] = 'finish';
       return true;
     }
     return false;
   } catch (error) {
-    nodeValidationState[nodeId] = 'error';
+    if (!isReadonly.value) {
+      nodeValidationState[nodeId] = 'error';
+    }
+    return false;
+  }
+};
+
+// 验证所有表单
+const validateForms = async () => {
+  try {
+    let hasError = false;
+    let firstErrorNodeId = null;
+    
+    // 遍历所有表单进行验证
+    for (const nodeId in formRefs) {
+      if (formRefs[nodeId] && !isReadonly.value) {
+        try {
+          await formRefs[nodeId].validate();
+          nodeValidationState[nodeId] = 'finish';
+        } catch (error) {
+          hasError = true;
+          nodeValidationState[nodeId] = 'error';
+          
+          // 记录第一个出错的节点
+          if (!firstErrorNodeId) {
+            firstErrorNodeId = nodeId;
+          }
+        }
+      }
+    }
+    
+    // 如果有错误，自动切换到第一个出错的节点
+    if (hasError && firstErrorNodeId) {
+      activeTabKey.value = firstErrorNodeId;
+      message.warning(`请完成"${templateContent.nodes.find(node => node.id === firstErrorNodeId)?.name || '当前'}"节点的必填项`);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('表单验证失败:', error);
     return false;
   }
 };
 
 // 初始化节点表单数据
 const initNodeForms = () => {
-  template.nodes.forEach(node => {
+  if (!templateContent.nodes) return;
+  
+  templateContent.nodes.forEach(node => {
     if (!nodeForms[node.id]) {
       nodeForms[node.id] = {};
     }
     
     // 初始化字段
-    node.fields.forEach(field => {
+    node.fields?.forEach(field => {
       if (field.type === 'checkbox') {
-        nodeForms[node.id][field.id] = [];
+        // 如果已有值，不覆盖；否则初始化为空数组
+        if (!nodeForms[node.id][field.id]) {
+          nodeForms[node.id][field.id] = [];
+        }
+      } else if (field.type === 'date') {
+        // 日期类型保持原样，不做特殊处理
+        if (!nodeForms[node.id][field.id]) {
+          nodeForms[node.id][field.id] = null;
+        }
       } else {
-        nodeForms[node.id][field.id] = '';
+        // 其他类型如果没有值，初始化为空字符串
+        if (!nodeForms[node.id][field.id]) {
+          nodeForms[node.id][field.id] = '';
+        }
       }
     });
     
     // 初始化节点验证状态
     nodeValidationState[node.id] = 'wait';
   });
+
+  // 如果有节点，设置第一个节点为当前活动节点
+  if (templateContent.nodes && templateContent.nodes.length > 0) {
+    activeTabKey.value = templateContent.nodes[0].id;
+  }
+  
+  // 尝试初始验证所有表单，以更新完成状态
+  setTimeout(() => {
+    checkAllNodeStatus();
+  }, 500);
 };
 
 // 检查所有节点表单完成状态
@@ -285,118 +403,182 @@ const checkAllNodeStatus = async () => {
   }
 };
 
-// 验证所有表单
-const validateForms = async () => {
-  try {
-    // 遍历所有表单进行验证
-    for (const nodeId in formRefs) {
-      if (formRefs[nodeId]) {
-        await formRefs[nodeId].validate();
-        nodeValidationState[nodeId] = 'finish';
-      }
-    }
-    return true;
-  } catch (error) {
-    return false;
-  }
-};
-
 // 监听表单数据变化，自动验证当前节点
 watch(activeTabKey, (newTabKey) => {
-  if (newTabKey && formRefs[newTabKey]) {
+  if (newTabKey && formRefs[newTabKey] && !isReadonly.value) {
     setTimeout(() => {
       validateNodeForm(newTabKey);
     }, 500);
   }
 });
 
-// 获取备案数据
-const fetchFilingData = async () => {
+// 获取模板详情信息
+const fetchTemplateInfo = async () => {
+  if (!filingId) {
+    message.error('备案ID不能为空');
+    router.push('/user/filing-center');
+    return;
+  }
+
+  loading.value = true;
   try {
-    // 实际项目中这里应调用API获取数据
-    // 模拟API调用
-    const response = await new Promise(resolve => {
-      setTimeout(() => {
-        resolve({
-          data: {
-            id: filingId,
-            filingNumber: 'BA2023003',
-            name: '内容生成模型备案',
-            templateType: '模型备案',
-            submittedAt: '',
-            status: 'draft',
-            formData: {
-              algorithm: {
-                algorithm_type: '生成式对话模型',
-                algorithm_name: '智能内容生成器',
-                launch_time: null,
-                version: 'v1.2.0',
-                application_fields: ['social_media', 'info_ugc', 'finance_info']
-              },
-              risk: {
-                risk_type: 'content_risk',
-                assessment_method: '通过模拟用户输入和红蓝对抗测试，评估模型输出的安全性和合规性',
-                control_measures: '建立内容审核机制，设置敏感词过滤，提供用户反馈渠道，定期更新安全规则',
-                evaluation_frequency: 'monthly'
-              },
-              governance: {
-                responsible_person: '张三',
-                contact_info: 'zhangsan@example.com',
-                department: '安全合规部',
-                governance_structure: '由技术部、安全部、法务部组成的算法治理委员会，定期召开会议评估算法风险',
-                emergency_plan: '发现重大安全风险时，立即暂停相关功能，组织专项小组分析处理，发布修复方案'
-              }
-            }
-          }
-        });
-      }, 500);
+    // 获取用户模板关系信息
+    const response = await userTemplateAPI.getAppliedTemplateList({
+      pageSize: 1,
+      pageNum: 1,
+      id: filingId
     });
 
-    // 填充数据
-    Object.assign(filingData, response.data);
-    
-    // 填充各个表单数据
-    if (response.data.formData) {
-      Object.keys(response.data.formData).forEach(nodeId => {
-        if (nodeForms[nodeId]) {
-          Object.assign(nodeForms[nodeId], response.data.formData[nodeId]);
-        }
-      });
+    if (response.data && response.data.records && response.data.records.length > 0) {
+      const templateData = response.data.records[0];
+      Object.assign(templateInfo, templateData);
+      
+      // 获取模板内容
+      await fetchTemplateContent();
+    } else {
+      message.error('未找到备案信息');
+      router.push('/user/filing-center');
     }
-    
-    // 检查所有节点的完成状态
-    setTimeout(() => {
-      checkAllNodeStatus();
-    }, 500);
-    
   } catch (error) {
-    console.error('获取备案数据失败:', error);
-    message.error('获取备案数据失败');
+    console.error('获取备案信息失败:', error);
+    message.error('获取备案信息失败: ' + (error.message || '未知错误'));
+    router.push('/user/filing-center');
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 获取模板内容
+const fetchTemplateContent = async () => {
+  try {
+    // 获取用户模板内容
+    const response = await userTemplateAPI.getTemplateContent(filingId);
+    
+    if (response.data) {
+      try {
+        // 打印接收到的原始数据以便调试
+        console.log('接收到的模板内容数据:', response.data);
+        
+        let contentData;
+        
+        // 检查响应数据是否已经是对象
+        if (typeof response.data === 'object' && response.data !== null) {
+          contentData = response.data;
+        } else {
+          // 检查响应数据是否可能是URL编码格式或其他非标准JSON格式
+          const dataStr = String(response.data).trim();
+          
+          // 尝试判断数据格式
+          if (dataStr.startsWith('{') && dataStr.endsWith('}')) {
+            // 看起来是JSON字符串，尝试解析
+            contentData = JSON.parse(dataStr);
+          } else if (dataStr.includes('=') && dataStr.includes('&')) {
+            // 看起来是URL参数格式，尝试解析
+            const params = new URLSearchParams(dataStr);
+            contentData = {
+              nodes: [],
+              formData: {}
+            };
+            
+            // 将URL参数转换为对象
+            params.forEach((value, key) => {
+              try {
+                // 尝试解析每个参数值，可能是JSON
+                contentData.formData[key] = JSON.parse(value);
+              } catch (e) {
+                // 如果解析失败，保持原始值
+                contentData.formData[key] = value;
+              }
+            });
+            
+            message.warning('模板内容格式特殊，已尝试进行转换');
+          } else {
+            // 未知格式，无法解析，返回默认结构
+            message.warning('模板内容格式无法识别，将使用默认模板');
+            contentData = { nodes: [], formData: {} };
+            
+            // 将原始数据保存以便调试
+            console.error('无法识别的数据格式:', dataStr);
+          }
+        }
+        
+        // 更新模板内容
+        if (contentData.nodes && Array.isArray(contentData.nodes)) {
+          templateContent.nodes = contentData.nodes;
+          
+          // 初始化表单
+          initNodeForms();
+          
+          // 如果有已保存的表单数据
+          if (contentData.formData) {
+            Object.keys(contentData.formData).forEach(nodeId => {
+              if (nodeForms[nodeId]) {
+                Object.assign(nodeForms[nodeId], contentData.formData[nodeId]);
+              }
+            });
+          }
+          
+          // 检查所有节点的完成状态
+          setTimeout(() => {
+            checkAllNodeStatus();
+          }, 500);
+        } else {
+          console.warn('响应中没有有效的nodes数组', contentData);
+          templateContent.nodes = [];
+          message.warning('模板结构不完整，请联系管理员');
+        }
+      } catch (parseError) {
+        console.error('解析模板内容失败:', parseError);
+        console.error('原始数据:', response.data);
+        message.error('模板内容格式不正确: ' + parseError.message);
+        templateContent.nodes = [];
+      }
+    } else {
+      message.warning('未获取到模板内容数据');
+      templateContent.nodes = [];
+    }
+  } catch (error) {
+    console.error('获取模板内容失败:', error);
+    message.error('获取模板内容失败: ' + (error.message || '未知错误'));
+    templateContent.nodes = [];
   }
 };
 
 // 保存草稿
 const handleSave = async () => {
+  if (isReadonly.value) return;
+  
   submitting.value = true;
   try {
+    // 显示加载消息
+    const loadingMessage = message.loading('正在保存数据...', 0);
+    
     // 检查所有节点状态
     await checkAllNodeStatus();
     
     // 构建保存的数据
-    const saveData = {
-      id: filingData.id,
-      formData: { ...nodeForms },
-      status: 'draft'
-    };
+    const content = JSON.stringify({
+      nodes: templateContent.nodes,
+      formData: { ...nodeForms }
+    });
     
     // 调用API保存数据
-    // 实际项目中这里应该是API调用
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    const response = await userTemplateAPI.saveTemplateContent(filingId, content);
     
-    message.success('保存成功');
+    // 关闭加载消息
+    loadingMessage();
+    
+    if (response && response.code === 200) {
+      message.success('保存成功');
+      
+      // 刷新模板信息，获取最新状态
+      await fetchTemplateInfo();
+    } else {
+      throw new Error(response?.message || '保存失败');
+    }
   } catch (error) {
     console.error('保存失败:', error);
-    message.error('保存失败');
+    message.error('保存失败: ' + (error.message || '未知错误'));
   } finally {
     submitting.value = false;
   }
@@ -404,6 +586,8 @@ const handleSave = async () => {
 
 // 提交审核
 const handleSubmit = async () => {
+  if (isReadonly.value) return;
+  
   // 验证所有表单
   const valid = await validateForms();
   if (!valid) {
@@ -411,55 +595,86 @@ const handleSubmit = async () => {
     return;
   }
   
-  submitting.value = true;
-  try {
-    // 构建提交的数据
-    const submitData = {
-      id: filingData.id,
-      formData: { ...nodeForms },
-      status: 'pending'
-    };
-    
-    // 调用API提交数据
-    // 实际项目中这里应该是API调用
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    message.success('提交成功，请等待审核');
-    
-    // 跳转回备案中心
-    router.push('/user/filing-center');
-  } catch (error) {
-    console.error('提交失败:', error);
-    message.error('提交失败');
-  } finally {
-    submitting.value = false;
-  }
+  // 弹出确认对话框
+  Modal.confirm({
+    title: '提交确认',
+    content: '提交后将无法再次编辑，确定要提交审核吗？',
+    okText: '确认提交',
+    cancelText: '暂不提交',
+    onOk: async () => {
+      submitting.value = true;
+      try {
+        // 显示加载消息
+        const loadingMessage = message.loading('正在保存备案数据...', 0);
+        
+        // 先保存表单数据
+        const content = JSON.stringify({
+          nodes: templateContent.nodes,
+          formData: { ...nodeForms }
+        });
+        
+        // 调用API保存数据
+        const saveResponse = await userTemplateAPI.saveTemplateContent(filingId, content);
+        
+        // 关闭加载消息
+        loadingMessage();
+        
+        if (!saveResponse.code || saveResponse.code !== 200) {
+          throw new Error(saveResponse.message || '保存数据失败');
+        }
+        
+        // 显示新的加载消息
+        const submitMessage = message.loading('正在提交审核...', 0);
+        
+        try {
+          // 根据OpenAPI规范，只有管理员可以调用reviewTemplate
+          // 使用提交审核的专用接口
+          const reviewResponse = await userTemplateAPI.submitForReview(filingId);
+          
+          if (!reviewResponse.code || reviewResponse.code !== 200) {
+            throw new Error(reviewResponse.message || '提交审核失败');
+          }
+          
+          // 关闭加载消息
+          submitMessage();
+          
+          // 显示成功消息
+          message.success('备案信息已成功提交，请等待管理员审核');
+          
+          // 跳转回备案中心
+          setTimeout(() => {
+            router.push('/user/filing-center');
+          }, 1500);
+        } catch (reviewError) {
+          submitMessage();
+          console.error('提交审核失败:', reviewError);
+          message.error('提交审核失败: ' + (reviewError.message || '未知错误'));
+        }
+      } catch (error) {
+        console.error('提交失败:', error);
+        message.error('提交失败: ' + (error.message || '未知错误'));
+      } finally {
+        submitting.value = false;
+      }
+    }
+  });
 };
-
-// 组件挂载前加载模板数据
-onBeforeMount(() => {
-  // 加载模板数据
-  template.nodes = [...templateData.nodes];
-  
-  // 初始化节点表单数据
-  initNodeForms();
-});
 
 // 组件挂载时获取数据
 onMounted(() => {
-  fetchFilingData();
+  fetchTemplateInfo();
 });
 </script>
 
 <style scoped>
 .filing-edit-container {
   width: 100%;
-  overflow-x: auto;
-  min-width: 1000px; /* 设置最小宽度，小于此宽度时出现滚动条 */
+  min-height: 100vh;
+  background-color: #f0f2f5;
+  padding: 24px;
 }
 
 .filing-edit {
-  padding: 24px;
   background: #fff;
   border-radius: 4px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
@@ -473,6 +688,18 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+  padding: 24px 24px 0;
+}
+
+.title-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.submission-info {
+  display: flex;
+  align-items: center;
 }
 
 .page-title {
@@ -483,11 +710,11 @@ onMounted(() => {
 }
 
 .info-card {
-  margin-bottom: 24px;
+  margin: 0 24px 24px;
 }
 
 .progress-card {
-  margin-bottom: 24px;
+  margin: 0 24px 24px;
 }
 
 .progress-title {
@@ -514,7 +741,15 @@ onMounted(() => {
 }
 
 .content-card {
-  margin-bottom: 24px;
+  margin: 0 24px 24px;
+}
+
+.empty-content {
+  margin: 0 24px 24px;
+  padding: 48px;
+  text-align: center;
+  background: #fff;
+  border-radius: 2px;
 }
 
 .node-content {
@@ -578,6 +813,19 @@ onMounted(() => {
   font-style: italic;
 }
 
+/* 禁用状态样式 */
+:deep(.ant-form-item-control-input-content .ant-input[disabled]),
+:deep(.ant-form-item-control-input-content .ant-select-disabled),
+:deep(.ant-form-item-control-input-content .ant-picker-disabled),
+:deep(.ant-form-item-control-input-content .ant-checkbox-disabled + span),
+:deep(.ant-form-item-control-input-content .ant-radio-disabled + span),
+:deep(.ant-form-item-control-input-content .ant-textarea[disabled]) {
+  color: rgba(0, 0, 0, 0.65);
+  background-color: #f5f5f5;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
 /* 修改滚动条样式 */
 ::-webkit-scrollbar {
   height: 8px;
@@ -596,5 +844,39 @@ onMounted(() => {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
+}
+
+/* 成功和错误状态的节点样式 */
+:deep(.ant-steps-item-finish .ant-steps-item-icon) {
+  background-color: #52c41a;
+  border-color: #52c41a;
+}
+
+:deep(.ant-steps-item-error .ant-steps-item-icon) {
+  background-color: #ff4d4f;
+  border-color: #ff4d4f;
+}
+
+:deep(.ant-steps-item-error .ant-steps-item-title) {
+  color: #ff4d4f;
+}
+
+/* 提交按钮样式 */
+.footer-actions :deep(.ant-btn-primary) {
+  height: 40px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 表单验证提示样式 */
+:deep(.ant-form-item-has-error .ant-form-item-explain) {
+  animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 </style> 
