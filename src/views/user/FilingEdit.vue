@@ -160,12 +160,12 @@
 
         <div class="footer-actions" v-if="!isReadonly">
           <a-space size="middle">
-            <a-button type="primary" @click="handleSave" :loading="submitting">
+            <a-button type="primary" @click="handleSave" :loading="savingInProgress" :disabled="submittingInProgress">
               <template #icon><SaveOutlined /></template>
               保存
             </a-button>
-            <a-button type="primary" @click="handleSubmit" :loading="submitting" 
-                      v-if="canSubmit">
+            <a-button type="primary" @click="handleSubmit" :loading="submittingInProgress" 
+                      :disabled="savingInProgress || !canSubmit">
               <template #icon><CheckOutlined /></template>
               提交审核
             </a-button>
@@ -200,7 +200,8 @@ const route = useRoute();
 const router = useRouter();
 const filingId = route.query.id;
 const isReadonly = computed(() => route.query.readonly === 'true');
-const submitting = ref(false);
+const submittingInProgress = ref(false);
+const savingInProgress = ref(false);
 const loading = ref(true);
 const activeTabKey = ref('');
 const nodeValidationState = reactive({});
@@ -267,7 +268,7 @@ const getStatusText = (status) => {
 const getStatusColor = (status) => {
   const statusMap = {
     0: 'default',   // 待审核
-    1: 'blue',      // 申请通过
+    1: 'green',      // 申请通过
     2: 'red',       // 拒绝申请
     3: 'orange',    // 待填写
     4: 'purple',    // 填写中
@@ -396,12 +397,17 @@ const initNodeForms = () => {
   }, 500);
 };
 
-// 检查所有节点表单完成状态
+// 检查所有节点状态
 const checkAllNodeStatus = async () => {
   for (const nodeId in nodeForms) {
     await validateNodeForm(nodeId);
   }
 };
+
+// 检查当前是否正在执行任何操作
+const isProcessing = computed(() => {
+  return savingInProgress.value || submittingInProgress.value;
+});
 
 // 监听表单数据变化，自动验证当前节点
 watch(activeTabKey, (newTabKey) => {
@@ -546,9 +552,9 @@ const fetchTemplateContent = async () => {
 
 // 保存草稿
 const handleSave = async () => {
-  if (isReadonly.value) return;
+  if (isReadonly.value || savingInProgress.value || submittingInProgress.value) return;
   
-  submitting.value = true;
+  savingInProgress.value = true;
   try {
     // 显示加载消息
     const loadingMessage = message.loading('正在保存数据...', 0);
@@ -562,31 +568,32 @@ const handleSave = async () => {
       formData: { ...nodeForms }
     });
     
-    // 调用API保存数据
-    const response = await userTemplateAPI.saveTemplateContent(filingId, content);
+    // 仅保存表单内容，不尝试更新模板状态
+    const saveResponse = await userTemplateAPI.saveTemplateContent(filingId, content);
     
     // 关闭加载消息
     loadingMessage();
     
-    if (response && response.code === 200) {
-      message.success('保存成功');
-      
-      // 刷新模板信息，获取最新状态
-      await fetchTemplateInfo();
-    } else {
-      throw new Error(response?.message || '保存失败');
+    if (!saveResponse.code || saveResponse.code !== 200) {
+      throw new Error(saveResponse.message || '保存失败');
     }
+    
+    // 显示成功消息
+    message.success('保存成功');
+    
+    // 刷新模板信息，获取最新状态
+    await fetchTemplateInfo();
   } catch (error) {
     console.error('保存失败:', error);
     message.error('保存失败: ' + (error.message || '未知错误'));
   } finally {
-    submitting.value = false;
+    savingInProgress.value = false;
   }
 };
 
 // 提交审核
 const handleSubmit = async () => {
-  if (isReadonly.value) return;
+  if (isReadonly.value || submittingInProgress.value || savingInProgress.value || !canSubmit.value) return;
   
   // 验证所有表单
   const valid = await validateForms();
@@ -602,7 +609,7 @@ const handleSubmit = async () => {
     okText: '确认提交',
     cancelText: '暂不提交',
     onOk: async () => {
-      submitting.value = true;
+      submittingInProgress.value = true;
       try {
         // 显示加载消息
         const loadingMessage = message.loading('正在保存备案数据...', 0);
@@ -627,9 +634,12 @@ const handleSubmit = async () => {
         const submitMessage = message.loading('正在提交审核...', 0);
         
         try {
-          // 根据OpenAPI规范，只有管理员可以调用reviewTemplate
-          // 使用提交审核的专用接口
-          const reviewResponse = await userTemplateAPI.submitForReview(filingId);
+          // 使用updateTemplateStatus API将状态修改为"审核中"(5)
+          const reviewResponse = await userTemplateAPI.updateTemplateStatus(
+            filingId,      // 模板关系ID
+            5,             // 状态值：5-审核中
+            '用户提交审核'  // 状态变更备注
+          );
           
           if (!reviewResponse.code || reviewResponse.code !== 200) {
             throw new Error(reviewResponse.message || '提交审核失败');
@@ -654,7 +664,7 @@ const handleSubmit = async () => {
         console.error('提交失败:', error);
         message.error('提交失败: ' + (error.message || '未知错误'));
       } finally {
-        submitting.value = false;
+        submittingInProgress.value = false;
       }
     }
   });

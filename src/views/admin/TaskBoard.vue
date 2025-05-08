@@ -134,7 +134,7 @@
           <a-radio-group v-model:value="reviewForm.status">
             <!-- 根据审核类型显示不同的选项 -->
             <template v-if="reviewForm.reviewType === 'application'">
-              <a-radio :value="1">通过申请</a-radio>
+              <a-radio :value="3">通过申请</a-radio>
               <a-radio :value="2">拒绝申请</a-radio>
             </template>
             <template v-else>
@@ -384,7 +384,7 @@ const handleApplicationReview = (record) => {
   if (!canReviewApplication(record.status)) return;
   
   currentRecord.value = record;
-  reviewForm.status = 1; // 默认选择通过
+  reviewForm.status = 3; // 默认选择通过，状态为"待填写"(3)而不是"申请通过"(1)
   reviewForm.remarks = '';
   reviewForm.reviewType = 'application'; // 标记为申请审核
   reviewModalVisible.value = true;
@@ -426,11 +426,16 @@ const confirmReview = async () => {
     if (reviewType === 'application') {
       // 处理申请审核
       console.log(`Sending application review with status: ${reviewForm.status}`);
-      response = await userTemplateAPI.reviewApplication(
+      // 如果选择了拒绝申请(2)，则保持原值，否则使用待填写状态(3)
+      const finalStatus = reviewForm.status === 2 ? 2 : 3;
+      
+      // 使用updateTemplateStatus接口代替reviewApplication
+      response = await userTemplateAPI.updateTemplateStatus(
         currentRecord.value.id,
-        reviewForm.status,
-        reviewForm.remarks
+        finalStatus,
+        reviewForm.remarks || (reviewForm.status === 2 ? '拒绝申请' : '通过申请，设置为待填写状态')
       );
+      
       console.log('Application review response:', response);
       message.success('申请审核操作成功');
     } else if (reviewType === 'content') {

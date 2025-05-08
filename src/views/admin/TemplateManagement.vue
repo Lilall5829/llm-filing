@@ -394,17 +394,41 @@ const confirmSendTemplate = async () => {
   
   try {
     loading.value = true;
+    
     // 调用API发送模板
-    await userTemplateAPI.applyTemplate(
+    const response = await userTemplateAPI.applyTemplate(
       currentTemplate.value.id,
       selectedUserIds.value
     );
     
-    message.success('模板发送成功');
+    if (response.code === 200 && response.data) {
+      // 获取生成的用户模板关系ID列表
+      const userTemplateIds = response.data;
+      
+      // 确保返回了用户模板关系ID列表
+      if (Array.isArray(userTemplateIds) && userTemplateIds.length > 0) {
+        // 处理每个关系
+        const updatePromises = userTemplateIds.map(id => 
+          userTemplateAPI.updateTemplateStatus(
+            id,
+            3, // 状态值：3-待填写
+            '管理员发送模板，设置为待填写状态'
+          )
+        );
+        
+        // 等待所有状态更新完成
+        await Promise.all(updatePromises);
+      }
+      
+      message.success('模板发送成功，初始状态已设置为"待填写"');
+    } else {
+      message.success('模板发送成功');
+    }
+    
     sendModalVisible.value = false;
   } catch (error) {
     console.error('发送模板失败:', error);
-    message.error('发送模板失败');
+    message.error('发送模板失败: ' + (error.message || '未知错误'));
   } finally {
     loading.value = false;
   }

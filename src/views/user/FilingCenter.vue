@@ -366,7 +366,7 @@ const getStatusText = (status) => {
 const getStatusColor = (status) => {
   const statusMap = {
     0: 'default',   // 待审核
-    1: 'blue',      // 申请通过
+    1: 'green',      // 申请通过
     2: 'red',       // 拒绝申请
     3: 'orange',    // 待填写
     4: 'purple',    // 填写中

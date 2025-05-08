@@ -70,6 +70,16 @@ export function submitForReview(id) {
   });
 }
 
+// 更新模板状态 (可用于用户提交审核或管理员审核)
+export function updateTemplateStatus(id, status, remarks) {
+  return request({
+    url: "/api/userTemplate/updateTemplateStatus",
+    method: "post",
+    params: { id, status },
+    data: remarks,
+  });
+}
+
 // 获取模板统计信息
 export function getTemplateStatistics() {
   return request({
