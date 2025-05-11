@@ -155,4 +155,23 @@ public class WordDocumentServiceImpl implements WordDocumentService {
 
         return tableData;
     }
+
+    /**
+     * 使用Java 17文本块生成错误JSON响应
+     * 
+     * @param errorCode    错误代码
+     * @param errorMessage 错误消息
+     * @return 格式化的JSON错误响应
+     */
+    private String generateErrorJson(String errorCode, String errorMessage) {
+        return """
+                {
+                    "error": {
+                        "code": "%s",
+                        "message": "%s",
+                        "timestamp": "%s"
+                    }
+                }
+                """.formatted(errorCode, errorMessage, java.time.LocalDateTime.now());
+    }
 }

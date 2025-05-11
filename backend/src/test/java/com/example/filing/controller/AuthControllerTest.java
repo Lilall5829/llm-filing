@@ -104,16 +104,10 @@ public class AuthControllerTest {
                 registrationRequest.setRole(2);
 
                 // Setup user response
-                userResponse = new AuthenticationResponse();
-                userResponse.setToken("user-jwt-token");
-                userResponse.setUserName("Regular User");
-                userResponse.setRole(2);
+                userResponse = new AuthenticationResponse("user-jwt-token", "Regular User", 2);
 
                 // Setup admin response
-                adminResponse = new AuthenticationResponse();
-                adminResponse.setToken("admin-jwt-token");
-                adminResponse.setUserName("Admin User");
-                adminResponse.setRole(1);
+                adminResponse = new AuthenticationResponse("admin-jwt-token", "Admin User", 1);
 
                 // Setup registered user
                 registeredUser = new SysUser();

@@ -6,7 +6,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -41,14 +40,6 @@ public class GlobalExceptionHandler {
                 logger.error("业务异常: {}", ex.getMessage(), ex);
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                                 .body(Result.failed(HttpStatus.INTERNAL_SERVER_ERROR.value(), ex.getMessage()));
-        }
-
-        @ExceptionHandler(AuthorizationDeniedException.class)
-        public ResponseEntity<Result<String>> handleAuthorizationDeniedException(
-                        AuthorizationDeniedException ex, WebRequest request) {
-                logger.error("授权拒绝异常: {}", ex.getMessage(), ex);
-                return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                                .body(Result.failed(HttpStatus.FORBIDDEN.value(), "Access Denied"));
         }
 
         @ExceptionHandler(AccessDeniedException.class)

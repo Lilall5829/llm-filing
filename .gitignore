@@ -1,5 +1,5 @@
 node_modules
-default_OpenAPI2.json
+default_OpenAPI.json
 templateformate.json
-default_OpenAPI3.json
 dist
+.cursor/rules

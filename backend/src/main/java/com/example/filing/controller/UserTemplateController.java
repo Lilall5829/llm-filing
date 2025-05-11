@@ -1,6 +1,7 @@
 package com.example.filing.controller;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -15,7 +16,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.filing.constants.UserTemplateStatus;
 import com.example.filing.dto.request.ApplyTemplateRequest;
+import com.example.filing.entity.AuditLog;
 import com.example.filing.entity.UserTemplate;
 import com.example.filing.repository.UserTemplateRepository;
 import com.example.filing.service.UserTemplateService;
@@ -23,13 +26,16 @@ import com.example.filing.util.Result;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * 用户模板关系控制器
+ */
 @RestController
 @RequestMapping("/api/userTemplate")
 @RequiredArgsConstructor
 public class UserTemplateController {
 
-    private final UserTemplateRepository userTemplateRepository;
     private final UserTemplateService userTemplateService;
+    private final UserTemplateRepository userTemplateRepository;
 
     /**
      * 分页获取用户模板列表
@@ -120,6 +126,96 @@ public class UserTemplateController {
     }
 
     /**
+     * 管理员审核用户提交的模板
+     *
+     * @param id      用户模板关系ID
+     * @param status  新状态值(6-审核通过,7-退回)
+     * @param remarks 审核意见/备注信息
+     * @param auth    认证信息
+     * @return 审核结果
+     */
+    @PostMapping("/reviewTemplate")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Result<String>> reviewTemplate(
+            @RequestParam String id,
+            @RequestParam Integer status,
+            @RequestBody(required = false) String remarks,
+            Authentication auth) {
+
+        // 从Authentication获取管理员ID
+        String adminId = auth.getName();
+
+        // 验证状态值是否有效
+        if (status != UserTemplateStatus.REVIEW_APPROVED && status != UserTemplateStatus.RETURNED) {
+            return ResponseEntity.badRequest().body(Result.failed("无效的审核状态，只能是审核通过(6)或退回(7)"));
+        }
+
+        // 调用服务层方法
+        Result<String> result = userTemplateService.updateTemplateStatus(id, status, remarks, adminId, true);
+
+        if (result.getCode() == 200) {
+            // 审核成功后，根据状态返回相应的成功信息
+            String message = status == UserTemplateStatus.REVIEW_APPROVED ? "审核通过" : "已退回用户修改";
+            return ResponseEntity.ok(Result.success(message));
+        } else {
+            return ResponseEntity.badRequest().body(result);
+        }
+    }
+
+    /**
+     * 用户提交表单内容进行审核
+     *
+     * @param id   用户模板关系ID
+     * @param auth 认证信息
+     * @return 提交结果
+     */
+    @PostMapping("/submitForReview")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Result<String>> submitForReview(
+            @RequestParam String id,
+            Authentication auth) {
+
+        // 从Authentication获取用户ID
+        String userId = auth.getName();
+
+        // 验证模板是否存在且状态是否允许提交
+        Optional<UserTemplate> userTemplateOpt = userTemplateRepository.findById(id);
+        if (!userTemplateOpt.isPresent()) {
+            return ResponseEntity.badRequest().body(Result.failed("模板不存在"));
+        }
+
+        UserTemplate userTemplate = userTemplateOpt.get();
+
+        // 验证是否是用户自己的模板
+        if (!userTemplate.getUserId().equals(userId)) {
+            return ResponseEntity.badRequest().body(Result.failed("无权操作他人的模板"));
+        }
+
+        // 验证模板状态是否允许提交审核（必须是填写中(4)或退回(7)状态）
+        int currentStatus = userTemplate.getStatus();
+        if (currentStatus != UserTemplateStatus.FILLING && currentStatus != UserTemplateStatus.RETURNED) {
+            String statusDesc = currentStatus == UserTemplateStatus.UNDER_REVIEW ? "审核中"
+                    : currentStatus == UserTemplateStatus.REVIEW_APPROVED ? "已审核通过" : "当前状态";
+            return ResponseEntity.badRequest().body(Result.failed("模板已是" + statusDesc + "，不能提交审核"));
+        }
+
+        // 验证模板是否有内容
+        if (userTemplate.getContent() == null || userTemplate.getContent().isEmpty()) {
+            return ResponseEntity.badRequest().body(Result.failed("模板内容不能为空，请先填写内容"));
+        }
+
+        // 调用服务层方法，将状态设为审核中(5)
+        Result<String> result = userTemplateService.updateTemplateStatus(
+                id, UserTemplateStatus.UNDER_REVIEW, "用户提交审核", userId, false);
+
+        if (result.getCode() == 200) {
+            return ResponseEntity.ok(Result.success("已提交审核，请等待管理员审核"));
+        } else {
+            return ResponseEntity.badRequest().body(result);
+        }
+    }
+
+    /**
      * 获取模板内容
      *
      * @param id 用户模板关系ID
@@ -152,11 +248,38 @@ public class UserTemplateController {
             @RequestBody String content,
             Authentication auth) {
 
-        // 从Authentication获取用户ID
         String userId = auth.getName();
-
-        // 调用服务层方法
         Result<String> result = userTemplateService.saveTemplateContent(id, content, userId);
+
+        if (result.getCode() == 200) {
+            return ResponseEntity.ok(result);
+        } else {
+            return ResponseEntity.badRequest().body(result);
+        }
+    }
+
+    /**
+     * 获取模板审核历史
+     *
+     * @param id 用户模板关系ID
+     * @return 审核历史列表
+     */
+    @GetMapping("/getAuditHistory")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Result<List<AuditLog>>> getAuditHistory(@RequestParam String id, Authentication auth) {
+        // 验证操作权限（管理员可以查看任何模板的历史，普通用户只能查看自己的）
+        boolean isAdmin = auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+        if (!isAdmin) {
+            // 如果不是管理员，验证是否是自己的模板
+            Optional<UserTemplate> userTemplateOpt = userTemplateRepository.findById(id);
+            if (!userTemplateOpt.isPresent() || !userTemplateOpt.get().getUserId().equals(auth.getName())) {
+                return ResponseEntity.badRequest().body(Result.failed("无权查看他人的模板审核历史"));
+            }
+        }
+
+        Result<List<AuditLog>> result = userTemplateService.getTemplateAuditHistory(id);
 
         if (result.getCode() == 200) {
             return ResponseEntity.ok(result);

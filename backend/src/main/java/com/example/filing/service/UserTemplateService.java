@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.data.domain.Page;
 
+import com.example.filing.entity.AuditLog;
 import com.example.filing.entity.UserTemplate;
 import com.example.filing.util.Result;
 
@@ -62,4 +63,12 @@ public interface UserTemplateService {
      * @return 保存结果
      */
     Result<String> saveTemplateContent(String id, String content, String userId);
+
+    /**
+     * 获取模板审核历史
+     *
+     * @param id 用户模板关系ID
+     * @return 审核历史列表
+     */
+    Result<List<AuditLog>> getTemplateAuditHistory(String id);
 }

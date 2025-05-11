@@ -1,14 +1,11 @@
 package com.example.filing.dto;
 
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
-public class AuthenticationResponse {
-    private String token;
-    private String userName;
-    private Integer role;
+/**
+ * 登录认证响应记录类
+ * 使用Java 17的记录类特性优化DTO
+ */
+public record AuthenticationResponse(
+        String token,
+        String userName,
+        Integer role) {
 }

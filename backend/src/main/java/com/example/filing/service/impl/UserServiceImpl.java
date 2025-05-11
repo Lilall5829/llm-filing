@@ -67,13 +67,8 @@ public class UserServiceImpl implements UserService {
         // Generate JWT token
         String token = jwtTokenUtil.generateToken(user.getLoginName(), user.getRole());
 
-        // Create response
-        AuthenticationResponse response = new AuthenticationResponse();
-        response.setToken(token);
-        response.setUserName(user.getUserName());
-        response.setRole(user.getRole());
-
-        return response;
+        // Create response using record constructor
+        return new AuthenticationResponse(token, user.getUserName(), user.getRole());
     }
 
     @Override
@@ -102,13 +97,8 @@ public class UserServiceImpl implements UserService {
         // Generate JWT token
         String token = jwtTokenUtil.generateToken(user.getLoginName(), user.getRole());
 
-        // Create response
-        AuthenticationResponse response = new AuthenticationResponse();
-        response.setToken(token);
-        response.setUserName(user.getUserName());
-        response.setRole(user.getRole());
-
-        return response;
+        // Create response using record constructor
+        return new AuthenticationResponse(token, user.getUserName(), user.getRole());
     }
 
     @Override

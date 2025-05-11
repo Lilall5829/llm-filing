@@ -1,7 +1,5 @@
 package com.example.filing.config;
 
-import java.io.IOException;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,16 +13,10 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.example.filing.security.JwtTokenProvider;
+import com.example.filing.security.JwtAuthenticationFilter;
 import com.example.filing.util.Result;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * 安全配置类
@@ -37,7 +29,7 @@ public class SecurityConfig {
     private final ObjectMapper objectMapper;
 
     @Autowired
-    private JwtTokenProvider jwtTokenProvider;
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
 
     public SecurityConfig(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -72,8 +64,7 @@ public class SecurityConfig {
                             Result<?> result = Result.failed(HttpStatus.UNAUTHORIZED.value(), "Unauthorized");
                             response.getWriter().write(objectMapper.writeValueAsString(result));
                         }))
-                .addFilterBefore(new JwtAuthenticationFilter(jwtTokenProvider),
-                        UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
@@ -81,34 +72,5 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
-    }
-
-    private static class JwtAuthenticationFilter extends OncePerRequestFilter {
-        private final JwtTokenProvider jwtTokenProvider;
-
-        public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
-            this.jwtTokenProvider = jwtTokenProvider;
-        }
-
-        @Override
-        protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
-                FilterChain filterChain)
-                throws ServletException, IOException {
-            String token = extractToken(request);
-            if (token != null && jwtTokenProvider.validateToken(token, null)) {
-                // Token is valid, proceed with the request
-                filterChain.doFilter(request, response);
-            } else {
-                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            }
-        }
-
-        private String extractToken(HttpServletRequest request) {
-            String bearerToken = request.getHeader("Authorization");
-            if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
-                return bearerToken.substring(7);
-            }
-            return null;
-        }
     }
 }

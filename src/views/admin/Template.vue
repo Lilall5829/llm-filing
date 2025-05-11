@@ -497,11 +497,11 @@ watch(selectedNode, (newValue) => {
     });
     
     // 确保节点表单数据已初始化
-    if (!nodeForms[newValue]) {
-      nodeForms[newValue] = reactive({
-        fields: []
-      });
-    }
+      if (!nodeForms[newValue]) {
+        nodeForms[newValue] = reactive({
+          fields: []
+        });
+      }
     
     // 初始化表单数据字段默认值
     const fields = nodeForms[newValue].fields;
@@ -734,7 +734,7 @@ const triggerFileUpload = () => {
         
         message.success('导入成功');
       }
-    } catch (error) {
+  } catch (error) {
       console.error('导入失败:', error);
       message.error(error.message || '导入失败，请重试');
     } finally {
@@ -1039,7 +1039,7 @@ onMounted(async () => {
       if (response.data) {
         const template = response.data;
         
-        // 加载模板基本信息
+    // 加载模板基本信息
         templateForm.name = template.templateName;
         templateForm.type = template.templateType;
         

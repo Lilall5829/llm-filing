@@ -18,4 +18,13 @@ public interface UserTemplateRepository extends JpaRepository<UserTemplate, Stri
      * @return 用户模板分页列表
      */
     Page<UserTemplate> findByUserId(String userId, Pageable pageable);
+
+    /**
+     * 根据用户ID和模板ID查询用户模板
+     *
+     * @param userId     用户ID
+     * @param templateId 模板ID
+     * @return 用户模板
+     */
+    UserTemplate findByUserIdAndTemplateId(String userId, String templateId);
 }

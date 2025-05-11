@@ -7,8 +7,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-import javax.crypto.SecretKey;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -29,7 +27,7 @@ public class JwtTokenUtil {
 
     // 如果有注入的密钥则使用注入的密钥，否则使用配置的密钥字符串
     @Autowired(required = false)
-    private SecretKey injectedSecretKey;
+    private Key injectedSecretKey;
 
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
@@ -49,10 +47,10 @@ public class JwtTokenUtil {
         Key key = getSecretKey();
 
         return Jwts.builder()
-                .setClaims(claims)
-                .setSubject(subject)
-                .setIssuedAt(now)
-                .setExpiration(expirationDate)
+                .claims(claims)
+                .subject(subject)
+                .issuedAt(now)
+                .expiration(expirationDate)
                 .signWith(key)
                 .compact();
     }
@@ -91,11 +89,11 @@ public class JwtTokenUtil {
 
     private Claims extractAllClaims(String token) {
         Key key = getSecretKey();
-        return Jwts.parserBuilder()
-                .setSigningKey(key)
+        return Jwts.parser()
+                .verifyWith((javax.crypto.SecretKey) key)
                 .build()
-                .parseClaimsJws(token)
-                .getBody();
+                .parseSignedClaims(token)
+                .getPayload();
     }
 
     private Boolean isTokenExpired(String token) {

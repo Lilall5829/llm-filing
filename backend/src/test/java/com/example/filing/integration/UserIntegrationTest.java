@@ -348,7 +348,7 @@ public class UserIntegrationTest {
         AuthenticationResponse response = objectMapper.readValue(
                 content.substring(content.indexOf("\"data\":") + 7, content.indexOf("}", content.indexOf("\"data\":"))),
                 AuthenticationResponse.class);
-        userToken = response.getToken();
+        userToken = response.token();
         assertNotNull(userToken);
         System.out.println("Obtained user token: " + userToken);
     }
