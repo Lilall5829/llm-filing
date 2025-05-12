@@ -29,6 +29,7 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -67,10 +68,45 @@ public class TemplateRegistryControllerWithFileTest {
 
                                 @Override
                                 public ResponseEntity<Result<?>> saveTemplateRegistry(
-                                                TemplateRegistryRequest request, Authentication authentication) {
+                                                @RequestParam(value = "file", required = false) MultipartFile file,
+                                                @RequestParam(value = "data", required = false) String data,
+                                                @RequestParam(value = "templateCode", required = false) String templateCode,
+                                                @RequestParam(value = "templateName", required = false) String templateName,
+                                                @RequestParam(value = "templateDescription", required = false) String templateDescription,
+                                                @RequestParam(value = "templateType", required = false) String templateType,
+                                                @RequestParam(value = "templateContent", required = false) String templateContent,
+                                                Authentication authentication) {
+                                        // 处理测试中的请求数据
+                                        TemplateRegistryRequest finalRequest = new TemplateRegistryRequest();
+
+                                        // 从data参数解析JSON
+                                        if (data != null && !data.trim().isEmpty()) {
+                                                try {
+                                                        finalRequest = objectMapper.readValue(data,
+                                                                        TemplateRegistryRequest.class);
+                                                } catch (Exception e) {
+                                                        return ResponseEntity.badRequest()
+                                                                        .contentType(MediaType.APPLICATION_JSON)
+                                                                        .body(Result.failed("无效的JSON数据: "
+                                                                                        + e.getMessage()));
+                                                }
+                                        } else {
+                                                // 使用单独的参数构建请求对象
+                                                if (templateCode != null)
+                                                        finalRequest.setTemplateCode(templateCode);
+                                                if (templateName != null)
+                                                        finalRequest.setTemplateName(templateName);
+                                                if (templateDescription != null)
+                                                        finalRequest.setTemplateDescription(templateDescription);
+                                                if (templateType != null)
+                                                        finalRequest.setTemplateType(templateType);
+                                                if (templateContent != null)
+                                                        finalRequest.setTemplateContent(templateContent);
+                                        }
+
                                         return ResponseEntity.ok()
                                                         .contentType(MediaType.APPLICATION_JSON)
-                                                        .body(templateRegistryService.saveTemplateRegistry(request,
+                                                        .body(templateRegistryService.saveTemplateRegistry(finalRequest,
                                                                         "test-admin-id"));
                                 }
 

@@ -32,3 +32,16 @@ build/
 ### VS Code ###
 .vscode/
 doc/
+test_uploads/
+test_uploads/**
+test_uploads/templates
+test_uploads/templates/**
+uploads/
+uploads/**
+uploads/templates/
+uploads/templates/**
+
+# 如果需要在uploads目录中保留特定文件，可以使用!操作符
+# !uploads/.gitkeep
+
+
