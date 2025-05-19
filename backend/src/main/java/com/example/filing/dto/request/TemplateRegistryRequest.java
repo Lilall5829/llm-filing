@@ -9,6 +9,11 @@ import lombok.Data;
 public class TemplateRegistryRequest {
 
     /**
+     * 模板ID（用于更新）
+     */
+    private String id;
+
+    /**
      * 模板编号
      */
     private String templateCode;

@@ -19,7 +19,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.filing.constants.UserTemplateStatus;
 import com.example.filing.dto.request.ApplyTemplateRequest;
 import com.example.filing.entity.AuditLog;
+import com.example.filing.entity.SysUser;
 import com.example.filing.entity.UserTemplate;
+import com.example.filing.repository.SysUserRepository;
 import com.example.filing.repository.UserTemplateRepository;
 import com.example.filing.service.UserTemplateService;
 import com.example.filing.util.Result;
@@ -36,26 +38,66 @@ public class UserTemplateController {
 
     private final UserTemplateService userTemplateService;
     private final UserTemplateRepository userTemplateRepository;
+    private final SysUserRepository sysUserRepository;
 
     /**
      * 分页获取用户模板列表
      *
-     * @param userId 用户ID
-     * @param page   页码（从0开始）
-     * @param size   每页大小
+     * @param userId       用户ID (可选，管理员可不传获取所有用户模板)
+     * @param templateName 模板名称（可选，筛选条件）
+     * @param templateCode 模板编号（可选，筛选条件）
+     * @param status       状态值（可选，筛选条件）
+     * @param page         页码（从0开始）
+     * @param size         每页大小
      * @return 用户模板分页列表
      */
     @GetMapping("/page")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<Page<UserTemplate>> getUserTemplateList(
-            @RequestParam String userId,
+    public ResponseEntity<?> getUserTemplateList(
+            @RequestParam(required = false) String userId,
+            @RequestParam(required = false) String templateName,
+            @RequestParam(required = false) String templateCode,
+            @RequestParam(required = false) Integer status,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(defaultValue = "10") int size,
+            Authentication auth) {
 
-        PageRequest pageRequest = PageRequest.of(page, size, Sort.by("createTime").descending());
-        Page<UserTemplate> userTemplates = userTemplateRepository.findByUserId(userId, pageRequest);
+        try {
+            // 获取当前用户ID和角色
+            String currentUserId = auth.getName();
+            boolean isAdmin = auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
 
-        return ResponseEntity.ok(userTemplates);
+            PageRequest pageRequest = PageRequest.of(page, size, Sort.by("createTime").descending());
+            Page<UserTemplate> userTemplates;
+
+            // 管理员特殊处理：不传userId或userId为'all'时，返回所有模板
+            if (isAdmin && (userId == null || "all".equals(userId))) {
+                // 根据前端传入的过滤条件查询所有用户模板
+                userTemplates = userTemplateRepository.findAllWithFilters(
+                        pageRequest,
+                        templateName,
+                        templateCode,
+                        status);
+            } else {
+                // 非管理员或管理员查询特定用户
+                // 如果userId为null且非管理员，使用当前用户的ID
+                String targetUserId = userId != null ? userId : currentUserId;
+
+                // 只能查自己的（非管理员情况下）
+                if (!isAdmin && !targetUserId.equals(currentUserId)) {
+                    return ResponseEntity.badRequest()
+                            .body(Result.failed("无权查看其他用户的模板"));
+                }
+
+                userTemplates = userTemplateRepository.findByUserId(targetUserId, pageRequest);
+            }
+
+            return ResponseEntity.ok(userTemplates);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Result.failed("获取用户模板列表失败: " + e.getMessage()));
+        }
     }
 
     /**
@@ -274,7 +316,21 @@ public class UserTemplateController {
         if (!isAdmin) {
             // 如果不是管理员，验证是否是自己的模板
             Optional<UserTemplate> userTemplateOpt = userTemplateRepository.findById(id);
-            if (!userTemplateOpt.isPresent() || !userTemplateOpt.get().getUserId().equals(auth.getName())) {
+            if (!userTemplateOpt.isPresent()) {
+                return ResponseEntity.badRequest().body(Result.failed("模板不存在"));
+            }
+
+            UserTemplate userTemplate = userTemplateOpt.get();
+            String loginName = auth.getName();
+
+            // 检查auth.getName()是否是loginName，如果是则查找对应的用户ID
+            SysUser user = sysUserRepository.findByLoginName(loginName);
+            if (user == null) {
+                return ResponseEntity.badRequest().body(Result.failed("无法识别当前用户"));
+            }
+
+            // 比较用户ID
+            if (!userTemplate.getUserId().equals(user.getId())) {
                 return ResponseEntity.badRequest().body(Result.failed("无权查看他人的模板审核历史"));
             }
         }

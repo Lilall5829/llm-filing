@@ -70,6 +70,7 @@ public class TemplateRegistryControllerWithFileTest {
                                 public ResponseEntity<Result<?>> saveTemplateRegistry(
                                                 @RequestParam(value = "file", required = false) MultipartFile file,
                                                 @RequestParam(value = "data", required = false) String data,
+                                                @RequestParam(value = "id", required = false) String id,
                                                 @RequestParam(value = "templateCode", required = false) String templateCode,
                                                 @RequestParam(value = "templateName", required = false) String templateName,
                                                 @RequestParam(value = "templateDescription", required = false) String templateDescription,
@@ -92,6 +93,8 @@ public class TemplateRegistryControllerWithFileTest {
                                                 }
                                         } else {
                                                 // 使用单独的参数构建请求对象
+                                                if (id != null)
+                                                        finalRequest.setId(id);
                                                 if (templateCode != null)
                                                         finalRequest.setTemplateCode(templateCode);
                                                 if (templateName != null)

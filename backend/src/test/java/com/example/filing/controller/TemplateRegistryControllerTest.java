@@ -87,6 +87,7 @@ public class TemplateRegistryControllerTest {
                                 public ResponseEntity<Result<?>> saveTemplateRegistry(
                                                 @RequestParam(value = "file", required = false) MultipartFile file,
                                                 @RequestParam(value = "data", required = false) String data,
+                                                @RequestParam(value = "id", required = false) String id,
                                                 @RequestParam(value = "templateCode", required = false) String templateCode,
                                                 @RequestParam(value = "templateName", required = false) String templateName,
                                                 @RequestParam(value = "templateDescription", required = false) String templateDescription,
@@ -109,6 +110,8 @@ public class TemplateRegistryControllerTest {
                                                 }
                                         } else {
                                                 // 使用单独的参数构建请求对象
+                                                if (id != null)
+                                                        finalRequest.setId(id);
                                                 if (templateCode != null)
                                                         finalRequest.setTemplateCode(templateCode);
                                                 if (templateName != null)
@@ -411,6 +414,7 @@ public class TemplateRegistryControllerTest {
                 mockMvc.perform(MockMvcRequestBuilders.multipart("/api/templateRegistry/saveTemplateRegistry")
                                 .file(wordFile) // 添加文件
                                 .file(jsonData) // 添加JSON数据
+                                .param("id", templateRegistry.getId()) // 添加ID参数
                                 .with(request -> {
                                         request.setMethod("POST");
                                         return request;
@@ -418,7 +422,6 @@ public class TemplateRegistryControllerTest {
                                 .with(SecurityMockMvcRequestPostProcessors.csrf())
                                 .accept(MediaType.APPLICATION_JSON))
                                 .andDo(print());
-                // 不检查状态码，因为multipart处理在测试环境可能不完全支持
         }
 
         @Test

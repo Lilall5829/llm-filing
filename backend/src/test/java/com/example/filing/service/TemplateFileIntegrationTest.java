@@ -6,7 +6,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
@@ -78,8 +77,6 @@ public class TemplateFileIntegrationTest {
         testTemplateRegistry.setDeleted(0);
 
         // 配置Mock
-        when(templateRegistryRepository.findByTemplateCode(anyString()))
-                .thenReturn(Optional.empty());
         when(templateRegistryRepository.save(any(TemplateRegistry.class)))
                 .thenReturn(testTemplateRegistry);
         when(templateRegistryRepository.findById(eq("test-template-id")))

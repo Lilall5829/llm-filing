@@ -283,8 +283,12 @@ public class TemplateStatusIntegrationTest {
     }
 
     @Test
-    public void testUpdateStatus_AsAdmin_AnyStatus() throws Exception {
-        // 管理员将用户模板从填写中(4)直接变更为审核通过(6) - 应该成功
+    public void testUpdateStatus_AsAdmin_ValidTransition() throws Exception {
+        // 先将模板状态设置为审核中(5)
+        userTemplate.setStatus(UserTemplateStatus.UNDER_REVIEW);
+        userTemplate = userTemplateRepository.save(userTemplate);
+
+        // 管理员将用户模板从审核中(5)变更为审核通过(6) - 根据新规则应该成功
         String remarks = "管理员审核通过";
 
         mockMvc.perform(post("/api/userTemplate/updateTemplateStatus")
@@ -303,7 +307,76 @@ public class TemplateStatusIntegrationTest {
         Optional<UserTemplate> updatedTemplate = userTemplateRepository.findById(userTemplate.getId());
         assertTrue(updatedTemplate.isPresent());
         assertEquals(UserTemplateStatus.REVIEW_APPROVED, updatedTemplate.get().getStatus());
-        assertEquals(remarks, updatedTemplate.get().getRemarks());
+        assertTrue(updatedTemplate.get().getRemarks().contains(remarks));
+    }
+
+    @Test
+    public void testUpdateStatus_AsAdmin_PendingApprovalTransition() throws Exception {
+        // 创建一个处于待审核(0)状态的模板关系
+        UserTemplate pendingTemplate = new UserTemplate();
+        pendingTemplate.setUserId(normalUser.getId());
+        pendingTemplate.setTemplateId(testTemplate.getId());
+        pendingTemplate.setStatus(UserTemplateStatus.PENDING_APPROVAL); // 待审核状态
+        // 设置审计字段
+        LocalDateTime now = LocalDateTime.now();
+        pendingTemplate.setCreateTime(now);
+        pendingTemplate.setUpdateTime(now);
+        pendingTemplate = userTemplateRepository.save(pendingTemplate);
+
+        // 管理员将状态从待审核(0)变更为待填写(3) - 根据新规则应该成功
+        String remarks = "批准申请，可以填写";
+
+        mockMvc.perform(post("/api/userTemplate/updateTemplateStatus")
+                .with(csrf())
+                .with(user(adminUser.getId()).roles("ADMIN"))
+                .param("id", pendingTemplate.getId())
+                .param("status", String.valueOf(UserTemplateStatus.PENDING_FILL))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(remarks))
+                .andDo(print())
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(200))
+                .andExpect(jsonPath("$.message").value("状态更新成功"));
+
+        // 验证数据库中状态已更新
+        Optional<UserTemplate> updatedTemplate = userTemplateRepository.findById(pendingTemplate.getId());
+        assertTrue(updatedTemplate.isPresent());
+        assertEquals(UserTemplateStatus.PENDING_FILL, updatedTemplate.get().getStatus());
+        assertTrue(updatedTemplate.get().getRemarks().contains(remarks));
+    }
+
+    @Test
+    public void testUpdateStatus_AsAdmin_InvalidTransition() throws Exception {
+        // 创建一个处于待审核(0)状态的模板关系
+        UserTemplate pendingTemplate = new UserTemplate();
+        pendingTemplate.setUserId(normalUser.getId());
+        pendingTemplate.setTemplateId(testTemplate.getId());
+        pendingTemplate.setStatus(UserTemplateStatus.PENDING_APPROVAL); // 待审核状态
+        // 设置审计字段
+        LocalDateTime now = LocalDateTime.now();
+        pendingTemplate.setCreateTime(now);
+        pendingTemplate.setUpdateTime(now);
+        pendingTemplate = userTemplateRepository.save(pendingTemplate);
+
+        // 管理员尝试将状态从待审核(0)直接变更为审核通过(6) - 根据新规则应该失败
+        String remarks = "尝试无效状态变更";
+
+        mockMvc.perform(post("/api/userTemplate/updateTemplateStatus")
+                .with(csrf())
+                .with(user(adminUser.getId()).roles("ADMIN"))
+                .param("id", pendingTemplate.getId())
+                .param("status", String.valueOf(UserTemplateStatus.REVIEW_APPROVED))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(remarks))
+                .andDo(print())
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(500))
+                .andExpect(jsonPath("$.message").value("当前状态不允许变更为目标状态"));
+
+        // 验证数据库中状态未变更
+        Optional<UserTemplate> updatedTemplate = userTemplateRepository.findById(pendingTemplate.getId());
+        assertTrue(updatedTemplate.isPresent());
+        assertEquals(UserTemplateStatus.PENDING_APPROVAL, updatedTemplate.get().getStatus());
     }
 
     @Test

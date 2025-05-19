@@ -76,15 +76,22 @@ public class TemplateRegistryController {
      * 保存或更新模板
      * 支持JSON和multipart/form-data两种格式
      * 
-     * @param file           模板文件 (multipart格式时使用，可选)
-     * @param data           模板数据 (JSON字符串)
-     * @param authentication 认证信息
+     * @param file                模板文件 (multipart格式时使用，可选)
+     * @param data                模板数据 (JSON字符串)
+     * @param id                  模板ID (更新时使用)
+     * @param templateCode        模板编号
+     * @param templateName        模板名称
+     * @param templateDescription 模板描述
+     * @param templateType        模板类型
+     * @param templateContent     模板内容
+     * @param authentication      认证信息
      * @return 保存结果
      */
     @PostMapping(value = "/saveTemplateRegistry", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Result<?>> saveTemplateRegistry(
             @RequestParam(value = "file", required = false) MultipartFile file,
             @RequestParam(value = "data", required = false) String data,
+            @RequestParam(value = "id", required = false) String id,
             @RequestParam(value = "templateCode", required = false) String templateCode,
             @RequestParam(value = "templateName", required = false) String templateName,
             @RequestParam(value = "templateDescription", required = false) String templateDescription,
@@ -105,6 +112,8 @@ public class TemplateRegistryController {
                 }
             } else {
                 // 使用单独的请求参数构建请求对象
+                if (id != null)
+                    finalRequest.setId(id);
                 if (templateCode != null)
                     finalRequest.setTemplateCode(templateCode);
                 if (templateName != null)

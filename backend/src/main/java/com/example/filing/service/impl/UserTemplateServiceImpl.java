@@ -42,12 +42,26 @@ public class UserTemplateServiceImpl implements UserTemplateService {
     @Override
     public Result<Page<UserTemplate>> getUserTemplateList(String userId, Integer current, Integer pageSize) {
         try {
+            // 如果用户ID是loginName而不是UUID，先转换
+            String userUUID = userId;
+            if (!userId.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+                log.debug("userId不是UUID格式，尝试按loginName查找用户: {}", userId);
+                SysUser user = sysUserRepository.findByLoginName(userId);
+                if (user != null) {
+                    userUUID = user.getId();
+                    log.debug("找到用户，转换userId为UUID: loginName={}, UUID={}", userId, userUUID);
+                } else {
+                    log.error("无法找到用户: loginName={}", userId);
+                    return Result.failed("用户不存在");
+                }
+            }
+
             PageRequest pageRequest = PageRequest.of(
                     current == null ? 0 : current - 1,
                     pageSize == null ? 10 : pageSize,
                     Sort.by("createTime").descending());
 
-            Page<UserTemplate> userTemplates = userTemplateRepository.findByUserId(userId, pageRequest);
+            Page<UserTemplate> userTemplates = userTemplateRepository.findByUserId(userUUID, pageRequest);
             return Result.success(userTemplates);
         } catch (Exception e) {
             log.error("获取用户模板列表失败", e);
@@ -72,8 +86,19 @@ public class UserTemplateServiceImpl implements UserTemplateService {
                 return Result.failed("部分用户不存在");
             }
 
+            // 如果操作人ID是loginName而不是UUID，先转换
+            String operatorUUID = operatorId;
+            if (!operatorId.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+                log.debug("操作人ID不是UUID格式，尝试按loginName查找用户: {}", operatorId);
+                SysUser user = sysUserRepository.findByLoginName(operatorId);
+                if (user != null) {
+                    operatorUUID = user.getId();
+                    log.debug("找到操作人，转换operatorId为UUID: loginName={}, UUID={}", operatorId, operatorUUID);
+                }
+            }
+
             // 获取操作人信息
-            SysUser operator = sysUserRepository.findById(operatorId).orElse(null);
+            SysUser operator = sysUserRepository.findById(operatorUUID).orElse(null);
             String operatorName = operator != null ? operator.getUserName() : "未知用户";
 
             List<UserTemplate> newRelations = new ArrayList<>();
@@ -110,7 +135,7 @@ public class UserTemplateServiceImpl implements UserTemplateService {
                         null,
                         userTemplate.getStatus(),
                         userTemplate.getRemarks(),
-                        operatorId,
+                        operatorUUID,
                         operatorName,
                         isAdmin);
             }
@@ -145,8 +170,22 @@ public class UserTemplateServiceImpl implements UserTemplateService {
                 return Result.failed("当前状态不允许变更为目标状态");
             }
 
+            // 如果用户ID是loginName而不是UUID，先转换
+            String userUUID = userId;
+            if (!isAdmin && !userId.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+                log.debug("userId不是UUID格式，尝试按loginName查找用户: {}", userId);
+                SysUser user = sysUserRepository.findByLoginName(userId);
+                if (user != null) {
+                    userUUID = user.getId();
+                    log.debug("找到用户，转换userId为UUID: loginName={}, UUID={}", userId, userUUID);
+                } else {
+                    log.error("无法找到用户: loginName={}", userId);
+                    return Result.failed("用户不存在");
+                }
+            }
+
             // 验证普通用户只能操作自己的模板
-            if (!isAdmin && !userTemplate.getUserId().equals(userId)) {
+            if (!isAdmin && !userTemplate.getUserId().equals(userUUID)) {
                 return Result.failed("无权操作他人的模板");
             }
 
@@ -199,7 +238,7 @@ public class UserTemplateServiceImpl implements UserTemplateService {
             userTemplateRepository.save(userTemplate);
 
             // 获取操作人信息
-            SysUser operator = sysUserRepository.findById(userId).orElse(null);
+            SysUser operator = sysUserRepository.findById(userUUID).orElse(null);
             String operatorName = operator != null ? operator.getUserName() : "未知用户";
 
             // 记录审核日志
@@ -210,7 +249,7 @@ public class UserTemplateServiceImpl implements UserTemplateService {
                     oldStatus,
                     status,
                     fullRemarks,
-                    userId,
+                    userUUID,
                     operatorName,
                     isAdmin);
 
@@ -319,15 +358,36 @@ public class UserTemplateServiceImpl implements UserTemplateService {
     @Transactional
     public Result<String> saveTemplateContent(String id, String content, String userId) {
         try {
+            log.debug("开始保存模板内容: id={}, userId={}, content={}", id, userId, content);
+
             Optional<UserTemplate> userTemplateOpt = userTemplateRepository.findById(id);
             if (!userTemplateOpt.isPresent()) {
+                log.error("用户模板关系不存在: id={}", id);
                 return Result.failed("用户模板关系不存在");
             }
 
             UserTemplate userTemplate = userTemplateOpt.get();
+            log.debug("找到用户模板: id={}, userId={}, templateId={}, status={}",
+                    userTemplate.getId(), userTemplate.getUserId(),
+                    userTemplate.getTemplateId(), userTemplate.getStatus());
 
             // 验证用户只能操作自己的模板
-            if (!userTemplate.getUserId().equals(userId)) {
+            // 首先检查传入的userId是否是loginName而不是UUID
+            String userUUID = userId;
+            if (!userId.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+                log.debug("userId不是UUID格式，尝试按loginName查找用户: {}", userId);
+                SysUser user = sysUserRepository.findByLoginName(userId);
+                if (user != null) {
+                    userUUID = user.getId();
+                    log.debug("找到用户，转换userId为UUID: loginName={}, UUID={}", userId, userUUID);
+                } else {
+                    log.error("无法找到用户: loginName={}", userId);
+                    return Result.failed("用户不存在");
+                }
+            }
+
+            if (!userTemplate.getUserId().equals(userUUID)) {
+                log.error("无权操作他人的模板: 模板userId={}, 当前userId={}", userTemplate.getUserId(), userUUID);
                 return Result.failed("无权操作他人的模板");
             }
 
@@ -336,36 +396,55 @@ public class UserTemplateServiceImpl implements UserTemplateService {
             boolean statusChanged = false;
 
             // 更新内容
-            userTemplate.setContent(content);
+            try {
+                log.debug("尝试解析并设置内容: {}", content);
+                userTemplate.setContent(content);
+            } catch (Exception e) {
+                log.error("设置内容失败，可能是格式不正确: {}", e.getMessage(), e);
+                return Result.failed("内容格式不正确: " + e.getMessage());
+            }
 
             // 如果当前状态为待填写(3)，自动变更为填写中(4)
             if (userTemplate.getStatus() == UserTemplateStatus.PENDING_FILL) {
+                log.debug("状态从待填写变更为填写中");
                 userTemplate.setStatus(UserTemplateStatus.FILLING);
                 statusChanged = true;
             }
 
             // 保存更新
-            userTemplateRepository.save(userTemplate);
+            try {
+                userTemplateRepository.save(userTemplate);
+                log.debug("成功保存用户模板");
+            } catch (Exception e) {
+                log.error("保存到数据库失败: {}", e.getMessage(), e);
+                return Result.failed("保存到数据库失败: " + e.getMessage());
+            }
 
             // 获取操作人信息
-            SysUser operator = sysUserRepository.findById(userId).orElse(null);
+            SysUser operator = sysUserRepository.findById(userUUID).orElse(null);
             String operatorName = operator != null ? operator.getUserName() : "未知用户";
 
             // 记录内容更新日志
-            createAuditLog(
-                    "user_template",
-                    id,
-                    "内容更新",
-                    oldStatus,
-                    userTemplate.getStatus(),
-                    statusChanged ? "内容更新并状态变更为填写中" : "内容更新",
-                    userId,
-                    operatorName,
-                    false);
+            try {
+                createAuditLog(
+                        "user_template",
+                        id,
+                        "内容更新",
+                        oldStatus,
+                        userTemplate.getStatus(),
+                        statusChanged ? "内容更新并状态变更为填写中" : "内容更新",
+                        userUUID,
+                        operatorName,
+                        false);
+                log.debug("成功创建审核日志");
+            } catch (Exception e) {
+                log.warn("创建审核日志失败，但不影响主流程: {}", e.getMessage());
+            }
 
+            log.debug("模板内容保存成功");
             return Result.success("内容保存成功");
         } catch (Exception e) {
-            log.error("保存模板内容失败", e);
+            log.error("保存模板内容失败: {}", e.getMessage(), e);
             return Result.failed("保存模板内容失败: " + e.getMessage());
         }
     }

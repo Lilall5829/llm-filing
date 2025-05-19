@@ -54,12 +54,22 @@ public class UserTemplateStatus {
      * @return 是否允许转换
      */
     public static boolean isStatusTransitionAllowed(int currentStatus, int newStatus, boolean isAdmin) {
-        // 管理员可以执行任意状态变更
-        if (isAdmin) {
-            return true;
+        // 普通用户只能从填写中(4)变更为审核中(5)
+        if (!isAdmin) {
+            return currentStatus == FILLING && newStatus == UNDER_REVIEW;
         }
 
-        // 普通用户只能从填写中(4)变更为审核中(5)
-        return currentStatus == FILLING && newStatus == UNDER_REVIEW;
+        // 管理员的状态转换规则
+        switch (currentStatus) {
+            case PENDING_APPROVAL:
+                // 待审核(0) -> 待填写(3)或拒绝申请(2)
+                return newStatus == PENDING_FILL || newStatus == APPLICATION_REJECTED;
+            case UNDER_REVIEW:
+                // 审核中(5) -> 审核通过(6)或退回(7)
+                return newStatus == REVIEW_APPROVED || newStatus == RETURNED;
+            default:
+                // 管理员可以执行任意其他状态变更
+                return true;
+        }
     }
 }

@@ -3,3 +3,6 @@ default_OpenAPI.json
 templateformate.json
 dist
 .cursor/rules
+docs
+test_uploads/
+backend/uploads/

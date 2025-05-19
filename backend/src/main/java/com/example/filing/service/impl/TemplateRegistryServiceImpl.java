@@ -68,19 +68,20 @@ public class TemplateRegistryServiceImpl implements TemplateRegistryService {
         TemplateRegistry template;
         boolean isNew = true;
 
-        // 如果有ID，表示更新
-        if (StringUtils.hasText(request.getTemplateCode())) {
-            Optional<TemplateRegistry> existingTemplate = templateRegistryRepository
-                    .findByTemplateCode(request.getTemplateCode());
+        // 使用ID查找模板
+        if (StringUtils.hasText(request.getId())) {
+            Optional<TemplateRegistry> existingTemplate = templateRegistryRepository.findById(request.getId());
             if (existingTemplate.isPresent()) {
                 template = existingTemplate.get();
                 isNew = false;
             } else {
+                // ID不存在，创建新模板
                 template = new TemplateRegistry();
                 template.setCreateTime(LocalDateTime.now());
                 template.setCreateBy(userId);
             }
         } else {
+            // 没有提供ID，创建新模板
             template = new TemplateRegistry();
             template.setCreateTime(LocalDateTime.now());
             template.setCreateBy(userId);
@@ -88,6 +89,11 @@ public class TemplateRegistryServiceImpl implements TemplateRegistryService {
 
         // 复制属性
         BeanUtils.copyProperties(request, template);
+
+        // 如果是更新操作，需要保持原始ID不变
+        if (!isNew && StringUtils.hasText(request.getId())) {
+            template.setId(request.getId());
+        }
 
         // 设置更新信息
         template.setUpdateTime(LocalDateTime.now());
