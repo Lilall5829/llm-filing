@@ -9,6 +9,15 @@ export function getTemplateList(params) {
   });
 }
 
+// 获取公共模板列表 (普通用户可访问版本)
+export function getPublicTemplates(params) {
+  return request({
+    url: "/api/public/templates",
+    method: "get",
+    params,
+  });
+}
+
 // 获取模板详情
 export function getTemplateDetail(templateId) {
   return request({

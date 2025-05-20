@@ -1,7 +1,7 @@
 import axios from "axios";
 
-const baseURL = "http://115.159.105.90:8822";
-
+// const baseURL = "http://115.159.105.90:8822";
+const baseURL = "http://localhost:8080";
 // 创建axios实例
 const request = axios.create({
   baseURL,
@@ -15,6 +15,22 @@ request.interceptors.request.use(
     const token = localStorage.getItem("token");
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    // 打印请求信息用于调试
+    console.log(`请求: ${config.method.toUpperCase()} ${config.url}`);
+    console.log("请求参数:", config.params);
+    if (config.data) {
+      console.log("请求体类型:", typeof config.data);
+      console.log(
+        "请求体内容:",
+        typeof config.data === "string"
+          ? config.data.length > 100
+            ? config.data.substring(0, 100) + "..."
+            : config.data
+          : config.data
+      );
+      console.log("Content-Type:", config.headers["Content-Type"]);
     }
 
     return config;

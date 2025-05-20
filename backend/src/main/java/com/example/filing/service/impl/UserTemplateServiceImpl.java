@@ -80,9 +80,35 @@ public class UserTemplateServiceImpl implements UserTemplateService {
                 return Result.failed("模板不存在");
             }
 
-            // 验证用户是否存在
-            List<SysUser> users = sysUserRepository.findAllById(userIds);
-            if (users.isEmpty() || users.size() != userIds.size()) {
+            // 检查userIds是否为空，如果为空则将当前操作人作为用户ID
+            if (userIds == null || userIds.isEmpty()) {
+                userIds = new ArrayList<>();
+                userIds.add(operatorId);
+            }
+
+            // 先处理userIds中的登录名，转换为UUID
+            List<String> processedUserIds = new ArrayList<>();
+            for (String userId : userIds) {
+                String userUUID = userId;
+                // 如果不是UUID格式，尝试按loginName查找用户
+                if (!userId.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+                    log.debug("userIds中的ID不是UUID格式，尝试按loginName查找用户: {}", userId);
+                    SysUser user = sysUserRepository.findByLoginName(userId);
+                    if (user != null) {
+                        userUUID = user.getId();
+                        log.debug("找到用户，转换userId为UUID: loginName={}, UUID={}", userId, userUUID);
+                    } else {
+                        // 如果没找到用户，记录错误并继续
+                        log.error("在userIds中无法找到用户: loginName={}", userId);
+                        return Result.failed("用户 " + userId + " 不存在");
+                    }
+                }
+                processedUserIds.add(userUUID);
+            }
+
+            // 使用处理后的UUID列表查询用户
+            List<SysUser> users = sysUserRepository.findAllById(processedUserIds);
+            if (users.isEmpty() || users.size() != processedUserIds.size()) {
                 return Result.failed("部分用户不存在");
             }
 
@@ -103,10 +129,10 @@ public class UserTemplateServiceImpl implements UserTemplateService {
 
             List<UserTemplate> newRelations = new ArrayList<>();
 
-            // 创建用户模板关系
-            for (String userId : userIds) {
+            // 创建用户模板关系，使用处理后的UUID列表
+            for (String userUUID : processedUserIds) {
                 UserTemplate userTemplate = new UserTemplate();
-                userTemplate.setUserId(userId);
+                userTemplate.setUserId(userUUID);
                 userTemplate.setTemplateId(templateId);
 
                 // 根据操作人类型设置初始状态

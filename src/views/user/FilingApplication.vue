@@ -68,7 +68,7 @@
 
     <!-- 确认申请对话框 -->
     <a-modal
-      v-model:visible="confirmModalVisible"
+      v-model:open="confirmModalVisible"
       title="确认申请"
       :maskClosable="false"
       @ok="submitApplication"
@@ -120,17 +120,33 @@ const fetchTemplates = async (params = {}) => {
       ...params
     };
     
-    const response = await templateAPI.getTemplateList(searchParams);
+    console.log('获取公开模板列表请求参数:', JSON.stringify(searchParams));
     
-    if (response.data) {
-      templates.value = response.data.records || [];
-      pagination.total = response.data.total || 0;
+    const response = await templateAPI.getPublicTemplates(searchParams);
+    console.log('获取公开模板列表响应:', JSON.stringify(response));
+    
+    if (response && response.code === 200 && response.data) {
+      // 修正：Spring Data分页返回的是content和totalElements
+      templates.value = response.data.content || [];
+      pagination.total = response.data.totalElements || 0;
+      console.log('成功获取公开模板列表，数量:', templates.value.length);
+      
+      if (templates.value.length > 0) {
+        console.log('模板示例:', JSON.stringify(templates.value[0]));
+      } else {
+        console.warn('模板列表为空');
+      }
     } else {
+      console.warn('API返回异常:', response);
       templates.value = [];
       pagination.total = 0;
     }
   } catch (error) {
     console.error('获取模板列表失败:', error);
+    if (error.response) {
+      console.error('错误状态码:', error.response.status);
+      console.error('错误详情:', error.response.data);
+    }
     message.error('获取模板列表失败');
     templates.value = [];
   } finally {
@@ -146,14 +162,21 @@ const fetchAppliedTemplates = async () => {
       pageSize: 100 // 获取足够多记录来确定用户已申请哪些模板
     });
     
-    if (response.data && response.data.records) {
+    console.log('获取已申请模板列表响应:', JSON.stringify(response));
+    
+    if (response && response.code === 200 && response.data) {
       // 提取已申请的模板ID
       appliedTemplateIds.value = new Set(
-        response.data.records.map(record => record.templateId)
+        response.data.content.map(record => record.templateId)
       );
+      console.log('已申请的模板ID:', Array.from(appliedTemplateIds.value));
     }
   } catch (error) {
     console.error('获取已申请模板列表失败:', error);
+    if (error.response) {
+      console.error('错误状态码:', error.response.status);
+      console.error('错误详情:', error.response.data);
+    }
   }
 };
 
@@ -226,17 +249,13 @@ const submitApplication = async () => {
   submittingId.value = selectedTemplate.value.id;
   
   try {
-    // 使用实际API调用申请模板
-    const userId = localStorage.getItem('userId'); // 从本地存储获取用户ID
-    
-    if (!userId) {
-      throw new Error('用户未登录');
-    }
+    // API会从JWT令牌自动获取当前用户，不需要额外传递用户ID
+    // 但由于后端需要userIds字段，我们传入一个空数组，让API内部自动处理
     
     // 调用申请模板API
     const response = await userTemplateAPI.applyTemplate(
       selectedTemplate.value.id,
-      [userId]
+      [] // 提供空数组，API内部会自动使用当前登录用户
     );
     
     if (response.data) {

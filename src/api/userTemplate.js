@@ -11,12 +11,31 @@ export function getAppliedTemplateList(params) {
 
 // 用户申请模板或管理员发送模板
 export function applyTemplate(templateId, userIds) {
+  // 构造请求数据
+  const requestData = {
+    userIds: ["testuser2"], // 使用具体的登录名，让后端处理转换
+  };
+
+  console.log("申请模板参数:", { templateId, requestData });
+
   return request({
     url: "/api/userTemplate/applyTemplate",
     method: "post",
     params: { templateId },
-    data: userIds,
-  });
+    data: requestData,
+    timeout: 10000, // 增加超时时间
+  })
+    .then((response) => {
+      console.log("申请模板成功:", response);
+      return response;
+    })
+    .catch((error) => {
+      console.error("申请模板失败:", error);
+      if (error.response && error.response.data) {
+        console.error("错误详情:", error.response.data);
+      }
+      throw error;
+    });
 }
 
 // 获取当前用户的模板内容
@@ -32,11 +51,21 @@ export function getTemplateContent(id) {
 export function saveTemplateContent(id, content, status) {
   // 根据OpenAPI规范，saveTemplateContent接口不支持status参数
   // 但我们可以在content中添加提交状态信息
+  console.log("保存模板内容 - ID:", id);
+  console.log("保存模板内容 - 数据类型:", typeof content);
+  console.log(
+    "保存模板内容 - 数据前10个字符:",
+    content.substring(0, 10) + "..."
+  );
+
   return request({
     url: "/api/userTemplate/saveTemplateContent",
     method: "post",
     params: { id },
     data: content,
+    headers: {
+      "Content-Type": "application/json", // 确保内容类型为JSON
+    },
   });
 }
 

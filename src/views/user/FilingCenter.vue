@@ -179,7 +179,7 @@ const onDateChange = (dates) => {
 // 表格列定义
 const columns = [
   {
-    title: '编号',
+    title: '模板ID',
     dataIndex: 'id',
     key: 'id',
     width: 100,
@@ -254,24 +254,42 @@ const fetchFilings = async () => {
       templateName: filters.templateName || undefined,
       status: filters.status || undefined,
       startTime: filters.startTime || undefined,
-      endTime: filters.endTime || undefined
+      endTime: filters.endTime || undefined,
+      userId: 'current' // 显式指定查询当前用户的记录
     };
+    
+    console.log('备案中心请求参数:', JSON.stringify(params));
     
     // 调用API获取用户模板列表
     // 注意：API会根据当前用户token自动筛选结果
     // 普通用户只能看到自己申请的或管理员发送给自己的模板
     // 无需在前端显式添加用户ID筛选
     const response = await userTemplateAPI.getAppliedTemplateList(params);
+    console.log('备案中心响应:', JSON.stringify(response));
     
-    if (response.data) {
-      filings.value = response.data.records || [];
-      pagination.total = response.data.total || 0;
+    if (response && response.code === 200 && response.data) {
+      // 修正：Spring Data分页返回的是content和totalElements
+      filings.value = response.data.content || [];
+      pagination.total = response.data.totalElements || 0;
+      console.log('成功获取备案列表，数量:', filings.value.length);
+      
+      // 打印示例记录，帮助调试
+      if (filings.value.length > 0) {
+        console.log('备案记录示例:', JSON.stringify(filings.value[0]));
+      } else {
+        console.warn('备案列表为空，可能没有相关记录');
+      }
     } else {
+      console.warn('API返回异常:', response);
       filings.value = [];
       pagination.total = 0;
     }
   } catch (error) {
     console.error('获取备案列表失败:', error);
+    if (error.response) {
+      console.error('错误状态码:', error.response.status);
+      console.error('错误详情:', error.response.data);
+    }
     message.error('获取备案列表失败: ' + (error.message || '未知错误'));
     filings.value = [];
   } finally {

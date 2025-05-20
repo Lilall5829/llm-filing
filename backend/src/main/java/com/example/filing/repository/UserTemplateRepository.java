@@ -31,22 +31,98 @@ public interface UserTemplateRepository extends JpaRepository<UserTemplate, Stri
     UserTemplate findByUserIdAndTemplateId(String userId, String templateId);
 
     /**
-     * 查询所有用户模板，支持过滤条件
-     * 注意：此查询假设存在连接TemplateRegistry表的关系，
-     * 如果实际使用中涉及连接查询，可能需要调整此SQL以匹配实际关系。
+     * 根据状态统计数量
+     * 
+     * @param status 状态值
+     * @return 符合条件的记录数
+     */
+    long countByStatus(int status);
+
+    /**
+     * 统计所有记录数
+     * 
+     * @return 总记录数
+     */
+    @Override
+    long count();
+
+    /**
+     * 根据参数过滤条件查询所有用户模板（管理员用）
      * 
      * @param pageable     分页参数
      * @param templateName 模板名称（可选）
      * @param templateCode 模板编号（可选）
-     * @param status       状态值（可选）
-     * @return 用户模板分页列表
+     * @param status       状态（可选）
+     * @return 符合条件的用户模板分页列表
      */
-    @Query("SELECT ut FROM UserTemplate ut " +
-            "JOIN TemplateRegistry tr ON ut.templateId = tr.id " +
-            "WHERE (:templateName IS NULL OR tr.templateName LIKE CONCAT('%',:templateName,'%')) " +
-            "AND (:templateCode IS NULL OR tr.templateCode LIKE CONCAT('%',:templateCode,'%')) " +
+    @Query("SELECT ut FROM UserTemplate ut JOIN TemplateRegistry tr ON ut.templateId = tr.id " +
+            "WHERE (:templateName IS NULL OR tr.templateName LIKE CONCAT('%', :templateName, '%')) " +
+            "AND (:templateCode IS NULL OR tr.templateCode LIKE CONCAT('%', :templateCode, '%')) " +
             "AND (:status IS NULL OR ut.status = :status)")
     Page<UserTemplate> findAllWithFilters(
+            Pageable pageable,
+            @Param("templateName") String templateName,
+            @Param("templateCode") String templateCode,
+            @Param("status") Integer status);
+
+    /**
+     * 根据用户ID及其他参数过滤条件查询用户模板
+     * 
+     * @param userId       用户ID
+     * @param pageable     分页参数
+     * @param templateName 模板名称（可选）
+     * @param templateCode 模板编号（可选）
+     * @param status       状态（可选）
+     * @return 符合条件的用户模板分页列表
+     */
+    @Query("SELECT ut FROM UserTemplate ut JOIN TemplateRegistry tr ON ut.templateId = tr.id " +
+            "WHERE ut.userId = :userId " +
+            "AND (:templateName IS NULL OR tr.templateName LIKE CONCAT('%', :templateName, '%')) " +
+            "AND (:templateCode IS NULL OR tr.templateCode LIKE CONCAT('%', :templateCode, '%')) " +
+            "AND (:status IS NULL OR ut.status = :status)")
+    Page<UserTemplate> findByUserIdWithFilters(
+            @Param("userId") String userId,
+            Pageable pageable,
+            @Param("templateName") String templateName,
+            @Param("templateCode") String templateCode,
+            @Param("status") Integer status);
+
+    /**
+     * 根据参数过滤条件查询所有用户模板（管理员用），同时返回模板信息
+     * 
+     * @param pageable     分页参数
+     * @param templateName 模板名称（可选）
+     * @param templateCode 模板编号（可选）
+     * @param status       状态（可选）
+     * @return 包含UserTemplate和TemplateRegistry字段的结果集
+     */
+    @Query("SELECT ut, tr FROM UserTemplate ut JOIN TemplateRegistry tr ON ut.templateId = tr.id " +
+            "WHERE (:templateName IS NULL OR tr.templateName LIKE CONCAT('%', :templateName, '%')) " +
+            "AND (:templateCode IS NULL OR tr.templateCode LIKE CONCAT('%', :templateCode, '%')) " +
+            "AND (:status IS NULL OR ut.status = :status)")
+    Page<Object[]> findAllWithTemplateInfoFilters(
+            Pageable pageable,
+            @Param("templateName") String templateName,
+            @Param("templateCode") String templateCode,
+            @Param("status") Integer status);
+
+    /**
+     * 根据用户ID及其他参数过滤条件查询用户模板，同时返回模板信息
+     * 
+     * @param userId       用户ID
+     * @param pageable     分页参数
+     * @param templateName 模板名称（可选）
+     * @param templateCode 模板编号（可选）
+     * @param status       状态（可选）
+     * @return 包含UserTemplate和TemplateRegistry字段的结果集
+     */
+    @Query("SELECT ut, tr FROM UserTemplate ut JOIN TemplateRegistry tr ON ut.templateId = tr.id " +
+            "WHERE ut.userId = :userId " +
+            "AND (:templateName IS NULL OR tr.templateName LIKE CONCAT('%', :templateName, '%')) " +
+            "AND (:templateCode IS NULL OR tr.templateCode LIKE CONCAT('%', :templateCode, '%')) " +
+            "AND (:status IS NULL OR ut.status = :status)")
+    Page<Object[]> findByUserIdWithTemplateInfoFilters(
+            @Param("userId") String userId,
             Pageable pageable,
             @Param("templateName") String templateName,
             @Param("templateCode") String templateCode,

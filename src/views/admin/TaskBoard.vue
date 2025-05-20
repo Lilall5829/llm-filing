@@ -124,7 +124,7 @@
     
     <!-- 审核对话框 -->
     <a-modal
-      v-model:visible="reviewModalVisible"
+      v-model:open="reviewModalVisible"
       :title="reviewForm.reviewType === 'application' ? '申请审核' : '内容审核'"
       @ok="confirmReview"
       :confirm-loading="submitting"
@@ -319,19 +319,40 @@ const fetchTasks = async () => {
       startTime: filters.startTime || undefined,
       endTime: filters.endTime || undefined,
       pageNum: pagination.current,
-      pageSize: pagination.pageSize
+      pageSize: pagination.pageSize,
+      userId: 'all' // 明确获取所有用户的任务
     };
+    
+    console.log('任务看板API请求参数:', JSON.stringify(params));
     
     // 调用API获取用户模板列表
     const response = await userTemplateAPI.getAppliedTemplateList(params);
+    console.log('任务看板API响应:', JSON.stringify(response));
     
-    if (response.data) {
-      tasks.value = response.data.records || [];
-      pagination.total = response.data.total || 0;
+    if (response && response.code === 200 && response.data) {
+      tasks.value = response.data.content || [];
+      pagination.total = response.data.totalElements || 0;
+      console.log('成功获取任务数据，条数:', tasks.value.length);
+      
+      // 打印任务记录的详细信息，帮助调试
+      if (tasks.value.length > 0) {
+        console.log('任务记录示例:', JSON.stringify(tasks.value[0]));
+      } else {
+        console.warn('任务列表为空');
+      }
+    } else {
+      console.warn('API返回异常:', response);
+      tasks.value = [];
+      pagination.total = 0;
     }
   } catch (error) {
     console.error('获取任务数据失败:', error);
+    if (error.response) {
+      console.error('错误状态码:', error.response.status);
+      console.error('错误详情:', error.response.data);
+    }
     message.error('获取任务数据失败');
+    tasks.value = [];
   } finally {
     loading.value = false;
   }

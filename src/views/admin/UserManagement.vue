@@ -69,7 +69,7 @@
 
     <!-- 添加/编辑用户对话框 -->
     <a-modal
-      v-model:visible="modalVisible"
+      v-model:open="modalVisible"
       :title="modalTitle"
       @ok="handleModalOk"
       @cancel="handleModalCancel"
@@ -101,7 +101,7 @@
 
     <!-- 重置密码对话框 -->
     <a-modal
-      v-model:visible="resetPasswordVisible"
+      v-model:open="resetPasswordVisible"
       title="重置密码"
       @ok="handleResetPasswordOk"
       @cancel="() => resetPasswordVisible = false"
@@ -262,16 +262,17 @@ const fetchUsers = async () => {
   loading.value = true;
   try {
     const params = {
-      pageNum: pagination.current,
+      current: pagination.current,
       pageSize: pagination.pageSize,
       userName: searchUsername.value || undefined
     };
     
     const res = await getUserList(params);
     
-    if (res.data && res.data.records) {
-      users.value = res.data.records;
-      pagination.total = res.data.total;
+    if (res.data) {
+      // 使用Spring Data Page格式
+      users.value = res.data.content;  // Spring Data使用content而不是records
+      pagination.total = res.data.totalElements;  // 使用totalElements而不是total
     } else {
       message.error('获取用户列表失败');
     }

@@ -106,7 +106,7 @@
 
     <!-- 发送模板对话框 -->
     <a-modal
-      v-model:visible="sendModalVisible"
+      v-model:open="sendModalVisible"
       title="发送模板"
       @ok="confirmSendTemplate"
       :confirmLoading="loading"

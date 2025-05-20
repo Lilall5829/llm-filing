@@ -112,7 +112,7 @@
 
     <!-- 审核对话框 -->
     <a-modal
-      v-model:visible="reviewModalVisible"
+      v-model:open="reviewModalVisible"
       title="申请审核"
       @ok="confirmReview"
       :confirm-loading="submitting"
@@ -308,28 +308,46 @@ const handleTableChange = (pag) => {
 const fetchApplications = async () => {
   loading.value = true;
   try {
-    // 过滤参数，只获取状态为待审核(0)、申请通过(1)和拒绝申请(2)的记录
+    // 过滤参数，默认只获取状态为待审核(0)的记录
     const params = {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
-      status: filters.status || undefined,
+      status: filters.status !== undefined ? filters.status : 0, // 默认只显示待审核状态
       templateName: filters.templateName || undefined,
-      applicationOnly: true // 假设后端API支持这个参数来只返回申请记录
+      userId: 'all' // 获取所有用户的申请
     };
+    
+    console.log('申请管理API请求参数:', JSON.stringify(params));
     
     // 使用userTemplateAPI获取数据
     const response = await userTemplateAPI.getAppliedTemplateList(params);
+    console.log('申请管理API响应:', JSON.stringify(response));
     
-    if (response.data) {
-      // 过滤只获取申请记录 (状态 0、1、2)
-      applicationData.value = (response.data.records || []).filter(
-        record => [0, 1, 2].includes(Number(record.status))
-      );
-      pagination.total = response.data.total || 0;
+    if (response && response.code === 200 && response.data) {
+      // 确保只获取申请记录 (状态 0、1、2)
+      applicationData.value = (response.data.content || []);
+      pagination.total = response.data.totalElements || 0;
+      console.log('成功获取申请数据，条数:', applicationData.value.length);
+      
+      // 打印申请记录的详细信息，帮助调试
+      if (applicationData.value.length > 0) {
+        console.log('申请记录示例:', JSON.stringify(applicationData.value[0]));
+      } else {
+        console.warn('申请列表为空');
+      }
+    } else {
+      console.warn('API返回异常:', response);
+      applicationData.value = [];
+      pagination.total = 0;
     }
   } catch (error) {
     console.error('获取申请数据出错:', error);
+    if (error.response) {
+      console.error('错误状态码:', error.response.status);
+      console.error('错误详情:', error.response.data);
+    }
     message.error('获取申请数据出错: ' + (error.message || '未知错误'));
+    applicationData.value = [];
   } finally {
     loading.value = false;
   }

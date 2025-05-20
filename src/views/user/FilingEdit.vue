@@ -435,13 +435,37 @@ const fetchTemplateInfo = async () => {
       id: filingId
     });
 
-    if (response.data && response.data.records && response.data.records.length > 0) {
-      const templateData = response.data.records[0];
+    console.log('获取模板详情响应:', JSON.stringify(response));
+    
+    // 检查响应格式，支持多种可能的分页结构
+    let templateData = null;
+    
+    if (response.data) {
+      // 检查是否使用Spring Data分页结构 (content/totalElements)
+      if (response.data.content && response.data.content.length > 0) {
+        templateData = response.data.content[0];
+        console.log('使用Spring Data分页格式获取到模板数据');
+      } 
+      // 检查是否使用通用分页结构 (records/total)
+      else if (response.data.records && response.data.records.length > 0) {
+        templateData = response.data.records[0];
+        console.log('使用通用分页格式获取到模板数据');
+      }
+      // 可能是单个对象直接返回
+      else if (typeof response.data === 'object' && response.data.id) {
+        templateData = response.data;
+        console.log('获取到单个模板对象');
+      }
+    }
+    
+    if (templateData) {
+      console.log('获取到模板数据:', JSON.stringify(templateData));
       Object.assign(templateInfo, templateData);
       
       // 获取模板内容
       await fetchTemplateContent();
     } else {
+      console.error('未找到模板数据或格式不匹配:', response);
       message.error('未找到备案信息');
       router.push('/user/filing-center');
     }
@@ -457,12 +481,23 @@ const fetchTemplateInfo = async () => {
 // 获取模板内容
 const fetchTemplateContent = async () => {
   try {
+    console.log('开始获取模板内容: filingId =', filingId);
+    
     // 获取用户模板内容
     const response = await userTemplateAPI.getTemplateContent(filingId);
+    console.log('获取模板内容响应:', JSON.stringify(response));
     
-    if (response.data) {
+    // 检查响应格式
+    if (!response || response.code !== 200) {
+      console.error('模板内容API返回错误:', response);
+      message.error('获取模板内容失败: ' + (response?.message || '未知错误'));
+      return;
+    }
+    
+    if (response.data !== undefined) {
       try {
         // 打印接收到的原始数据以便调试
+        console.log('接收到的模板内容数据类型:', typeof response.data);
         console.log('接收到的模板内容数据:', response.data);
         
         let contentData;
@@ -470,16 +505,26 @@ const fetchTemplateContent = async () => {
         // 检查响应数据是否已经是对象
         if (typeof response.data === 'object' && response.data !== null) {
           contentData = response.data;
+          console.log('响应数据是对象类型，直接使用');
         } else {
-          // 检查响应数据是否可能是URL编码格式或其他非标准JSON格式
+          // 检查响应数据是否可能是JSON字符串
           const dataStr = String(response.data).trim();
+          console.log('响应数据是字符串类型，尝试解析为JSON');
           
           // 尝试判断数据格式
           if (dataStr.startsWith('{') && dataStr.endsWith('}')) {
             // 看起来是JSON字符串，尝试解析
-            contentData = JSON.parse(dataStr);
+            try {
+              contentData = JSON.parse(dataStr);
+              console.log('成功解析JSON字符串');
+            } catch (parseError) {
+              console.error('JSON解析失败:', parseError);
+              message.warning('模板内容格式解析失败，将使用默认模板');
+              contentData = { nodes: [], formData: {} };
+            }
           } else if (dataStr.includes('=') && dataStr.includes('&')) {
             // 看起来是URL参数格式，尝试解析
+            console.log('检测到URL参数格式数据，尝试解析');
             const params = new URLSearchParams(dataStr);
             contentData = {
               nodes: [],
@@ -498,18 +543,22 @@ const fetchTemplateContent = async () => {
             });
             
             message.warning('模板内容格式特殊，已尝试进行转换');
+          } else if (dataStr === "" || dataStr === "null") {
+            // 空内容，使用默认结构
+            console.log('模板内容为空，使用默认结构');
+            contentData = { nodes: [], formData: {} };
+            message.info('模板内容尚未填写，请填写内容后保存');
           } else {
             // 未知格式，无法解析，返回默认结构
+            console.error('无法识别的数据格式:', dataStr);
             message.warning('模板内容格式无法识别，将使用默认模板');
             contentData = { nodes: [], formData: {} };
-            
-            // 将原始数据保存以便调试
-            console.error('无法识别的数据格式:', dataStr);
           }
         }
         
         // 更新模板内容
-        if (contentData.nodes && Array.isArray(contentData.nodes)) {
+        if (contentData && contentData.nodes && Array.isArray(contentData.nodes)) {
+          console.log('更新模板节点:', contentData.nodes.length, '个节点');
           templateContent.nodes = contentData.nodes;
           
           // 初始化表单
@@ -517,6 +566,7 @@ const fetchTemplateContent = async () => {
           
           // 如果有已保存的表单数据
           if (contentData.formData) {
+            console.log('更新表单数据');
             Object.keys(contentData.formData).forEach(nodeId => {
               if (nodeForms[nodeId]) {
                 Object.assign(nodeForms[nodeId], contentData.formData[nodeId]);
@@ -529,9 +579,18 @@ const fetchTemplateContent = async () => {
             checkAllNodeStatus();
           }, 500);
         } else {
-          console.warn('响应中没有有效的nodes数组', contentData);
+          // 尝试从模板内容中推断结构
+          console.warn('响应中没有有效的nodes数组，尝试推断结构', contentData);
+          
+          // 如果内容为空或节点为空，可能是新模板，从模板定义中获取结构
+          if (templateInfo.templateId) {
+            // TODO: 可以从模板定义中获取结构
+            console.log('尝试从模板定义获取结构');
+            // 这里可以调用其他API获取模板定义，本次修复暂不实现
+          }
+          
           templateContent.nodes = [];
-          message.warning('模板结构不完整，请联系管理员');
+          message.warning('模板结构不完整，请联系管理员或重新保存');
         }
       } catch (parseError) {
         console.error('解析模板内容失败:', parseError);
@@ -540,6 +599,7 @@ const fetchTemplateContent = async () => {
         templateContent.nodes = [];
       }
     } else {
+      console.warn('API响应中没有data字段:', response);
       message.warning('未获取到模板内容数据');
       templateContent.nodes = [];
     }
@@ -563,10 +623,18 @@ const handleSave = async () => {
     await checkAllNodeStatus();
     
     // 构建保存的数据
-    const content = JSON.stringify({
+    const contentData = {
       nodes: templateContent.nodes,
       formData: { ...nodeForms }
-    });
+    };
+    
+    // 将数据转换为JSON字符串
+    const content = JSON.stringify(contentData);
+    
+    console.log('开始保存模板数据...');
+    console.log('节点数量:', templateContent.nodes.length);
+    console.log('表单字段:', Object.keys(nodeForms));
+    console.log('发送的数据长度:', content.length);
     
     // 仅保存表单内容，不尝试更新模板状态
     const saveResponse = await userTemplateAPI.saveTemplateContent(filingId, content);
@@ -578,13 +646,14 @@ const handleSave = async () => {
       throw new Error(saveResponse.message || '保存失败');
     }
     
-    // 显示成功消息
-    message.success('保存成功');
-    
     // 刷新模板信息，获取最新状态
     await fetchTemplateInfo();
   } catch (error) {
     console.error('保存失败:', error);
+    if (error.response) {
+      console.error('错误状态码:', error.response.status);
+      console.error('错误详情:', error.response.data);
+    }
     message.error('保存失败: ' + (error.message || '未知错误'));
   } finally {
     savingInProgress.value = false;
@@ -615,10 +684,18 @@ const handleSubmit = async () => {
         const loadingMessage = message.loading('正在保存备案数据...', 0);
         
         // 先保存表单数据
-        const content = JSON.stringify({
+        const contentData = {
           nodes: templateContent.nodes,
           formData: { ...nodeForms }
-        });
+        };
+        
+        // 将数据转换为JSON字符串
+        const content = JSON.stringify(contentData);
+        
+        console.log('提交前保存模板数据...');
+        console.log('节点数量:', templateContent.nodes.length);
+        console.log('表单字段:', Object.keys(nodeForms));
+        console.log('发送的数据长度:', content.length);
         
         // 调用API保存数据
         const saveResponse = await userTemplateAPI.saveTemplateContent(filingId, content);
@@ -634,12 +711,9 @@ const handleSubmit = async () => {
         const submitMessage = message.loading('正在提交审核...', 0);
         
         try {
-          // 使用updateTemplateStatus API将状态修改为"审核中"(5)
-          const reviewResponse = await userTemplateAPI.updateTemplateStatus(
-            filingId,      // 模板关系ID
-            5,             // 状态值：5-审核中
-            '用户提交审核'  // 状态变更备注
-          );
+          // 使用submitForReview API提交审核
+          // 这个API会自动将状态修改为"审核中"(5)
+          const reviewResponse = await userTemplateAPI.submitForReview(filingId);
           
           if (!reviewResponse.code || reviewResponse.code !== 200) {
             throw new Error(reviewResponse.message || '提交审核失败');
@@ -658,10 +732,18 @@ const handleSubmit = async () => {
         } catch (reviewError) {
           submitMessage();
           console.error('提交审核失败:', reviewError);
+          if (reviewError.response) {
+            console.error('错误状态码:', reviewError.response.status);
+            console.error('错误详情:', reviewError.response.data);
+          }
           message.error('提交审核失败: ' + (reviewError.message || '未知错误'));
         }
       } catch (error) {
         console.error('提交失败:', error);
+        if (error.response) {
+          console.error('错误状态码:', error.response.status);
+          console.error('错误详情:', error.response.data);
+        }
         message.error('提交失败: ' + (error.message || '未知错误'));
       } finally {
         submittingInProgress.value = false;

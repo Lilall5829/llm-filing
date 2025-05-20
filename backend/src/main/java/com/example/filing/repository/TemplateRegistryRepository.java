@@ -33,4 +33,11 @@ public interface TemplateRegistryRepository extends JpaRepository<TemplateRegist
                         @Param("templateName") String templateName,
                         @Param("templateType") String templateType,
                         Pageable pageable);
+
+        /**
+         * 统计未删除的模板数量
+         * 
+         * @return 未删除的模板数量
+         */
+        long countByDeletedFalse();
 }
