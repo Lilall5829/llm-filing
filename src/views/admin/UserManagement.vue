@@ -367,9 +367,10 @@ const handleModalOk = () => {
           // 添加用户
           const registerData = {
             loginName: formState.loginName,
-            username: formState.userName,
+            userName: formState.userName,
             password: formState.password
           };
+          console.log('添加用户请求数据:', registerData); // 添加调试日志
           await register(registerData);
           message.success('添加用户成功');
         }

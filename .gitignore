@@ -6,3 +6,5 @@ dist
 docs
 test_uploads/
 backend/uploads/
+final_review_gate.py
+*.sql

@@ -26,21 +26,32 @@
           </a-form-item>
 
           <a-form-item
+            label="备案编号"
+            name="code"
+            :rules="[{ required: false, message: '请输入备案编号' }]"
+            class="code-item"
+          >
+            <a-input
+              v-model:value="templateForm.code"
+              placeholder="请输入备案编号（可选，留空将自动生成）"
+              allow-clear
+            />
+          </a-form-item>
+
+          <a-form-item
             label="模板类型"
             name="type"
-            :rules="[{ required: true, message: '请选择模板类型' }]"
+            :rules="[{ required: true, message: '请输入或选择模板类型' }]"
             class="type-item"
           >
-            <a-select
+            <a-auto-complete
               v-model:value="templateForm.type"
-              placeholder="请选择模板类型"
+              :options="templateTypeOptions"
+              placeholder="请输入或选择模板类型"
               allow-clear
+              :filter-option="filterTemplateTypes"
               class="type-select"
-            >
-              <a-select-option v-for="type in templateTypes" :key="type.value" :value="type.value">
-                {{ type.label }}
-              </a-select-option>
-            </a-select>
+            />
           </a-form-item>
 
           <a-form-item class="button-item">
@@ -361,6 +372,7 @@ const templateForm = reactive({
   file: null,
   fileName: "",
   hasExistingFile: false,
+  code: "",
 });
 
 // 选中的节点
@@ -386,7 +398,7 @@ const saving = ref(false);
 const currentNodeForm = reactive({});
 
 // 模板类型选项 - 从后端获取
-const templateTypes = ref([]);
+const templateTypeOptions = ref([]);
 
 // 用于防止重复保存的标记
 const isSubmitting = ref(false);
@@ -459,24 +471,29 @@ const fetchTemplateTypes = async () => {
       
       if (types.length > 0) {
         // 将提取的类型格式化为组件需要的格式
-        templateTypes.value = types.map(type => ({
+        templateTypeOptions.value = types.map(type => ({
           label: type,
           value: type
         }));
       } else {
         // 如果API返回为空，不使用默认值
-        templateTypes.value = [];
+        templateTypeOptions.value = [];
       }
     } else {
       // 如果API返回为空，不使用默认值
-      templateTypes.value = [];
+      templateTypeOptions.value = [];
     }
   } catch (error) {
     console.error('获取模板类型列表失败:', error);
     message.error('获取模板类型列表失败');
     // 发生错误时，设置为空数组
-    templateTypes.value = [];
+    templateTypeOptions.value = [];
   }
+};
+
+// 过滤模板类型选项
+const filterTemplateTypes = (inputValue, option) => {
+  return option.value.toLowerCase().includes(inputValue.toLowerCase());
 };
 
 // 获取当前节点名称
@@ -573,6 +590,7 @@ const handleSaveNode = async () => {
     const templateDataToSave = {
       id: templateId,
       templateName: templateForm.name,
+      templateCode: templateForm.code,
       templateType: templateForm.type,
       templateDescription: '', // 可选的模板描述
       templateContent: JSON.stringify(templateContent)
@@ -680,6 +698,7 @@ const triggerFileUpload = () => {
       // 准备要提交的基本信息
       const templateInfo = {
         templateName: templateForm.name || undefined,
+        templateCode: templateForm.code || undefined,
         templateType: templateForm.type || undefined
       };
       
@@ -696,9 +715,10 @@ const triggerFileUpload = () => {
       if (response.data) {
         const template = response.data;
         
-        // 更新表单数据
-        if (template.templateName) templateForm.name = template.templateName;
-        if (template.templateType) templateForm.type = template.templateType;
+        // 加载模板基本信息
+        templateForm.name = template.templateName;
+        templateForm.code = template.templateCode;
+        templateForm.type = template.templateType;
         
         // 标记已有文件
         templateForm.hasExistingFile = true;
@@ -1041,6 +1061,7 @@ onMounted(async () => {
         
     // 加载模板基本信息
         templateForm.name = template.templateName;
+        templateForm.code = template.templateCode;
         templateForm.type = template.templateType;
         
         // 设置文件名和文件状态
@@ -1422,6 +1443,11 @@ onMounted(async () => {
   margin-bottom: 0;
 }
 
+.code-item {
+  min-width: 250px;
+  margin-bottom: 0;
+}
+
 .type-item {
   min-width: 200px;
   margin-bottom: 0;
@@ -1445,6 +1471,7 @@ onMounted(async () => {
   }
 
   .name-item,
+  .code-item,
   .type-item {
     width: 100%;
   }

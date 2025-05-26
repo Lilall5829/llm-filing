@@ -1,5 +1,7 @@
 package com.example.filing.repository;
 
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -40,4 +42,12 @@ public interface TemplateRegistryRepository extends JpaRepository<TemplateRegist
          * @return 未删除的模板数量
          */
         long countByDeletedFalse();
+
+        /**
+         * 根据模板编号查找模板
+         * 
+         * @param templateCode 模板编号
+         * @return 模板实体（可选）
+         */
+        Optional<TemplateRegistry> findByTemplateCode(String templateCode);
 }

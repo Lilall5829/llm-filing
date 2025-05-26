@@ -121,37 +121,6 @@
         </a-table>
       </a-card>
     </div>
-    
-    <!-- 审核对话框 -->
-    <a-modal
-      v-model:open="reviewModalVisible"
-      :title="reviewForm.reviewType === 'application' ? '申请审核' : '内容审核'"
-      @ok="confirmReview"
-      :confirm-loading="submitting"
-    >
-      <a-form :model="reviewForm" layout="vertical">
-        <a-form-item label="审核结果">
-          <a-radio-group v-model:value="reviewForm.status">
-            <!-- 根据审核类型显示不同的选项 -->
-            <template v-if="reviewForm.reviewType === 'application'">
-              <a-radio :value="3">通过申请</a-radio>
-              <a-radio :value="2">拒绝申请</a-radio>
-            </template>
-            <template v-else>
-              <a-radio :value="6">通过</a-radio>
-              <a-radio :value="7">退回</a-radio>
-            </template>
-          </a-radio-group>
-        </a-form-item>
-        <a-form-item label="审核意见">
-          <a-textarea 
-            v-model:value="reviewForm.remarks" 
-            placeholder="请输入审核意见"
-            :rows="4"
-          />
-        </a-form-item>
-      </a-form>
-    </a-modal>
   </div>
 </template>
 
@@ -198,7 +167,6 @@ const filters = reactive({
 });
 
 const loading = ref(false);
-const submitting = ref(false);
 
 // 表格列定义
 const columns = [
@@ -263,15 +231,6 @@ const pagination = reactive({
   showSizeChanger: true,
   showQuickJumper: true,
   showTotal: (total) => `共 ${total} 条记录`,
-});
-
-// 审核模态框
-const reviewModalVisible = ref(false);
-const currentRecord = ref(null);
-const reviewForm = reactive({
-  status: 6,
-  remarks: '',
-  reviewType: 'content' // 'application' 表示申请审核, 'content' 表示内容审核
 });
 
 // 获取状态颜色
@@ -404,21 +363,19 @@ const handleTableChange = (pag) => {
 const handleApplicationReview = (record) => {
   if (!canReviewApplication(record.status)) return;
   
-  currentRecord.value = record;
-  reviewForm.status = 3; // 默认选择通过，状态为"待填写"(3)而不是"申请通过"(1)
-  reviewForm.remarks = '';
-  reviewForm.reviewType = 'application'; // 标记为申请审核
-  reviewModalVisible.value = true;
+  router.push({
+    path: '/admin/application-review',
+    query: { id: record.id }
+  });
 };
 
 const handleContentReview = (record) => {
   if (!canReviewContent(record.status)) return;
   
-  currentRecord.value = record;
-  reviewForm.status = 6; // 默认选择通过
-  reviewForm.remarks = '';
-  reviewForm.reviewType = 'content'; // 标记为内容审核
-  reviewModalVisible.value = true;
+  router.push({
+    path: '/admin/content-review',
+    query: { id: record.id }
+  });
 };
 
 const handleDownload = async (record) => {
@@ -431,54 +388,6 @@ const handleDownload = async (record) => {
   } catch (error) {
     console.error('下载文件失败:', error);
     message.error('下载文件失败');
-  }
-};
-
-// 修改确认审核方法以适应不同审核类型
-const confirmReview = async () => {
-  if (!currentRecord.value) return;
-  
-  submitting.value = true;
-  try {
-    const reviewType = reviewForm.reviewType;
-    console.log(`Processing ${reviewType} review for record:`, currentRecord.value.id);
-    
-    let response;
-    if (reviewType === 'application') {
-      // 处理申请审核
-      console.log(`Sending application review with status: ${reviewForm.status}`);
-      // 如果选择了拒绝申请(2)，则保持原值，否则使用待填写状态(3)
-      const finalStatus = reviewForm.status === 2 ? 2 : 3;
-      
-      // 使用updateTemplateStatus接口代替reviewApplication
-      response = await userTemplateAPI.updateTemplateStatus(
-        currentRecord.value.id,
-        finalStatus,
-        reviewForm.remarks || (reviewForm.status === 2 ? '拒绝申请' : '通过申请，设置为待填写状态')
-      );
-      
-      console.log('Application review response:', response);
-      message.success('申请审核操作成功');
-    } else if (reviewType === 'content') {
-      // 处理内容审核
-      console.log(`Sending content review with status: ${reviewForm.status}`);
-      response = await userTemplateAPI.reviewTemplate(
-        currentRecord.value.id,
-        reviewForm.status,
-        reviewForm.remarks
-      );
-      console.log('Content review response:', response);
-      message.success('内容审核操作成功');
-    }
-    
-    reviewModalVisible.value = false;
-    fetchTasks(); // 刷新任务列表
-    fetchStatistics(); // 刷新统计数据
-  } catch (error) {
-    console.error('审核操作失败:', error);
-    message.error(`审核操作失败: ${error.message || '未知错误'}`);
-  } finally {
-    submitting.value = false;
   }
 };
 

@@ -367,13 +367,30 @@ public class UserTemplateServiceImpl implements UserTemplateService {
     @Override
     public Result<String> getTemplateContent(String id) {
         try {
+            log.debug("获取模板内容: id={}", id);
+
             Optional<UserTemplate> userTemplateOpt = userTemplateRepository.findById(id);
             if (!userTemplateOpt.isPresent()) {
+                log.error("用户模板关系不存在: id={}", id);
                 return Result.failed("用户模板关系不存在");
             }
 
             UserTemplate userTemplate = userTemplateOpt.get();
-            return Result.success(userTemplate.getContent());
+            log.debug("找到用户模板: id={}, userId={}, templateId={}, status={}",
+                    userTemplate.getId(), userTemplate.getUserId(),
+                    userTemplate.getTemplateId(), userTemplate.getStatus());
+
+            String content = userTemplate.getContent();
+            log.debug("模板内容: {}", content);
+
+            // 如果内容为空，返回空对象而不是null
+            if (content == null || content.trim().isEmpty()) {
+                log.info("模板内容为空，返回空JSON对象");
+                content = "{}"; // 返回空JSON对象
+            }
+
+            log.debug("返回模板内容，长度: {}", content.length());
+            return Result.success(content);
         } catch (Exception e) {
             log.error("获取模板内容失败", e);
             return Result.failed("获取模板内容失败: " + e.getMessage());

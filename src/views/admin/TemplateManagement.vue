@@ -256,17 +256,38 @@ const fetchTemplates = async () => {
 // 获取用户列表（用于发送模板）
 const fetchUsers = async () => {
   try {
+    console.log('开始获取用户列表...');
     const response = await userAPI.getUserList({
-      pageNum: 1,
+      current: 1,  // 后端期望的参数名
       pageSize: 100 // 获取足够多的用户
     });
     
-    if (response.data && response.data.records) {
-      users.value = response.data.records.filter(user => user.role !== 1); // 过滤出非管理员用户
+    console.log('用户列表API响应:', JSON.stringify(response));
+    
+    if (response && response.code === 200 && response.data) {
+      // 后端返回Spring Data Page格式，使用content而不是records
+      const allUsers = response.data.content || [];
+      // 过滤出非管理员用户（role !== 1）
+      users.value = allUsers.filter(user => user.role !== 1);
+      console.log('成功获取用户列表，总用户数:', allUsers.length, '非管理员用户数:', users.value.length);
+      
+      if (users.value.length === 0) {
+        console.warn('警告: 没有可选择的普通用户');
+        message.warning('没有可选择的普通用户');
+      }
+    } else {
+      console.error('获取用户列表返回异常:', response);
+      users.value = [];
+      message.error('获取用户列表失败');
     }
   } catch (error) {
     console.error('获取用户列表失败:', error);
-    message.error('获取用户列表失败');
+    if (error.response) {
+      console.error('错误状态码:', error.response.status);
+      console.error('错误详情:', error.response.data);
+    }
+    message.error('获取用户列表失败: ' + (error.message || '未知错误'));
+    users.value = [];
   }
 };
 

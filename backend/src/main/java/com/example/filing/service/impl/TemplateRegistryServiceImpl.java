@@ -1,6 +1,7 @@
 package com.example.filing.service.impl;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -90,6 +91,15 @@ public class TemplateRegistryServiceImpl implements TemplateRegistryService {
         // 复制属性
         BeanUtils.copyProperties(request, template);
 
+        // 如果是新模板且没有提供备案编号，则自动生成
+        // 检查templateCode是否为null、空字符串或纯空白字符
+        if (isNew && (!StringUtils.hasText(request.getTemplateCode()) ||
+                !StringUtils.hasText(template.getTemplateCode()))) {
+            String generatedCode = generateTemplateCode();
+            template.setTemplateCode(generatedCode);
+            System.out.println("自动生成备案编号: " + generatedCode); // 调试日志
+        }
+
         // 如果是更新操作，需要保持原始ID不变
         if (!isNew && StringUtils.hasText(request.getId())) {
             template.setId(request.getId());
@@ -152,5 +162,49 @@ public class TemplateRegistryServiceImpl implements TemplateRegistryService {
         template.setUpdateTime(LocalDateTime.now());
         templateRegistryRepository.save(template);
         return Result.success("模板内容更新成功");
+    }
+
+    /**
+     * 自动生成模板备案编号
+     * 格式：TPL + 年月日 + 4位序号
+     * 例如：TPL202412240001
+     */
+    private String generateTemplateCode() {
+        // 使用Java 17的现代API获取当前日期
+        var dateStr = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        var prefix = "TPL" + dateStr;
+
+        // 查询当天已有的模板编号，以确定下一个序号
+        var todayTemplates = templateRegistryRepository.findAll().stream()
+                .map(TemplateRegistry::getTemplateCode)
+                .filter(code -> code != null && code.startsWith(prefix))
+                .mapToInt(code -> {
+                    try {
+                        return Integer.parseInt(code.substring(prefix.length()));
+                    } catch (NumberFormatException e) {
+                        return 0;
+                    }
+                })
+                .max()
+                .orElse(0);
+
+        // 生成下一个序号
+        var nextSequence = todayTemplates + 1;
+        var templateCode = prefix + String.format("%04d", nextSequence);
+
+        // 双重检查确保唯一性
+        while (isTemplateCodeExists(templateCode)) {
+            nextSequence++;
+            templateCode = prefix + String.format("%04d", nextSequence);
+        }
+
+        return templateCode;
+    }
+
+    /**
+     * 检查备案编号是否已存在
+     */
+    private boolean isTemplateCodeExists(String templateCode) {
+        return templateRegistryRepository.findByTemplateCode(templateCode).isPresent();
     }
 }

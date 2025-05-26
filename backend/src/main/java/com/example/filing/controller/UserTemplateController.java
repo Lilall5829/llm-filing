@@ -123,8 +123,12 @@ public class UserTemplateController {
                         .findById(userTemplate.getTemplateId());
                 TemplateRegistry template = templateOpt.orElse(null);
 
+                // 获取关联的用户信息
+                Optional<SysUser> userOpt = sysUserRepository.findById(userTemplate.getUserId());
+                SysUser user = userOpt.orElse(null);
+
                 // 转换为DTO
-                UserTemplateDTO dto = UserTemplateDTO.fromEntity(userTemplate, template);
+                UserTemplateDTO dto = UserTemplateDTO.fromEntity(userTemplate, template, user);
 
                 // 创建包含单条记录的分页结果
                 List<UserTemplateDTO> singleResult = new ArrayList<>();
@@ -232,7 +236,8 @@ public class UserTemplateController {
                     .map(result -> {
                         UserTemplate ut = (UserTemplate) result[0];
                         TemplateRegistry tr = (TemplateRegistry) result[1];
-                        return UserTemplateDTO.fromEntity(ut, tr);
+                        SysUser su = result.length > 2 ? (SysUser) result[2] : null; // 处理可能没有用户信息的情况
+                        return UserTemplateDTO.fromEntity(ut, tr, su);
                     })
                     .collect(Collectors.toList());
 
@@ -673,6 +678,80 @@ public class UserTemplateController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.badRequest().body(Result.failed("获取所有模板记录失败: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * 获取模板定义（普通用户可访问）
+     * 普通用户只能获取已分配给自己的模板定义
+     *
+     * @param templateId 模板ID
+     * @param auth       认证信息
+     * @return 模板定义
+     */
+    @GetMapping("/getTemplateDefinition")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Result<TemplateRegistry>> getTemplateDefinition(
+            @RequestParam String templateId,
+            Authentication auth) {
+
+        try {
+            // 获取当前用户登录名和角色
+            String loginName = auth.getName();
+            boolean isAdmin = auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+
+            System.out.println("获取模板定义 - 认证信息: loginName=" + loginName + ", isAdmin=" + isAdmin);
+            System.out.println("获取模板定义 - 请求参数: templateId=" + templateId);
+
+            // 如果是管理员，直接返回模板定义
+            if (isAdmin) {
+                Optional<TemplateRegistry> templateOpt = templateRegistryRepository.findById(templateId);
+                if (!templateOpt.isPresent()) {
+                    return ResponseEntity.badRequest().body(Result.failed("模板不存在"));
+                }
+                return ResponseEntity.ok(Result.success(templateOpt.get()));
+            }
+
+            // 普通用户需要验证是否有权限访问此模板
+            // 通过登录名获取用户ID
+            SysUser currentUser = sysUserRepository.findByLoginName(loginName);
+            if (currentUser == null) {
+                System.err.println("错误: 找不到登录名为 " + loginName + " 的用户");
+                return ResponseEntity.badRequest().body(Result.failed("无法识别当前用户"));
+            }
+
+            String currentUserId = currentUser.getId();
+            System.out.println("当前用户信息: loginName=" + loginName + ", userId=" + currentUserId);
+
+            // 检查用户是否有使用此模板的权限（是否存在用户模板关系）
+            boolean hasPermission = userTemplateRepository.existsByUserIdAndTemplateId(currentUserId, templateId);
+
+            if (!hasPermission) {
+                System.out.println("权限错误: 用户没有访问模板的权限, userId=" + currentUserId + ", templateId=" + templateId);
+                return ResponseEntity.badRequest().body(Result.failed("无权访问此模板"));
+            }
+
+            // 获取模板定义
+            Optional<TemplateRegistry> templateOpt = templateRegistryRepository.findById(templateId);
+            if (!templateOpt.isPresent()) {
+                return ResponseEntity.badRequest().body(Result.failed("模板不存在"));
+            }
+
+            TemplateRegistry template = templateOpt.get();
+
+            // 检查模板是否被删除
+            if (template.getDeleted() != null && template.getDeleted() == 1) {
+                return ResponseEntity.badRequest().body(Result.failed("模板已被删除"));
+            }
+
+            System.out.println("成功返回模板定义: " + template.getTemplateName());
+            return ResponseEntity.ok(Result.success(template));
+
+        } catch (Exception e) {
+            System.err.println("获取模板定义失败: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Result.failed("获取模板定义失败: " + e.getMessage()));
         }
     }
 }

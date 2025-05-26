@@ -23,7 +23,7 @@ export function getTemplateDetail(templateId) {
   return request({
     url: `/api/templateRegistry/getTemplateRegistryById`,
     method: "get",
-    params: { templateId },
+    params: { id: templateId },
   });
 }
 
@@ -104,7 +104,7 @@ export function deleteTemplate(templateId) {
   return request({
     url: `/api/templateRegistry/deleteTemplate`,
     method: "delete",
-    params: { templateId },
+    params: { id: templateId },
     // 增加超时时间，确保操作有足够时间完成
     timeout: 10000,
     // 重试机制

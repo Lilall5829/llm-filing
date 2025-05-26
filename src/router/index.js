@@ -50,6 +50,18 @@ const router = createRouter({
           component: () => import("../views/admin/ApplicationManagement.vue"),
           meta: { title: "申请管理" },
         },
+        {
+          path: "content-review",
+          name: "content-review",
+          component: () => import("../views/admin/ContentReview.vue"),
+          meta: { title: "内容审核" },
+        },
+        {
+          path: "application-review",
+          name: "application-review",
+          component: () => import("../views/admin/ApplicationReview.vue"),
+          meta: { title: "申请审核" },
+        },
       ],
     },
     // 用户端路由

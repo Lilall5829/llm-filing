@@ -437,17 +437,25 @@ const fetchTemplateInfo = async () => {
 
     console.log('获取模板详情响应:', JSON.stringify(response));
     
+    // 检查响应格式，确保response.code === 200
+    if (!response || response.code !== 200) {
+      console.error('API返回错误状态:', response);
+      message.error('获取备案信息失败: ' + (response?.message || 'API返回错误状态'));
+      router.push('/user/filing-center');
+      return;
+    }
+    
     // 检查响应格式，支持多种可能的分页结构
     let templateData = null;
     
     if (response.data) {
       // 检查是否使用Spring Data分页结构 (content/totalElements)
-      if (response.data.content && response.data.content.length > 0) {
+      if (response.data.content && Array.isArray(response.data.content) && response.data.content.length > 0) {
         templateData = response.data.content[0];
         console.log('使用Spring Data分页格式获取到模板数据');
       } 
       // 检查是否使用通用分页结构 (records/total)
-      else if (response.data.records && response.data.records.length > 0) {
+      else if (response.data.records && Array.isArray(response.data.records) && response.data.records.length > 0) {
         templateData = response.data.records[0];
         console.log('使用通用分页格式获取到模板数据');
       }
@@ -456,9 +464,16 @@ const fetchTemplateInfo = async () => {
         templateData = response.data;
         console.log('获取到单个模板对象');
       }
+      // 检查是否是Page对象但没有数据
+      else if (response.data.content && Array.isArray(response.data.content) && response.data.content.length === 0) {
+        console.warn('分页查询返回空结果');
+        message.error('未找到备案信息，可能已被删除或您无权访问');
+        router.push('/user/filing-center');
+        return;
+      }
     }
     
-    if (templateData) {
+    if (templateData && templateData.id) {
       console.log('获取到模板数据:', JSON.stringify(templateData));
       Object.assign(templateInfo, templateData);
       
@@ -466,11 +481,23 @@ const fetchTemplateInfo = async () => {
       await fetchTemplateContent();
     } else {
       console.error('未找到模板数据或格式不匹配:', response);
+      console.error('响应数据详情:', {
+        hasData: !!response.data,
+        dataType: typeof response.data,
+        hasContent: !!(response.data && response.data.content),
+        contentLength: response.data && response.data.content ? response.data.content.length : 'N/A',
+        hasRecords: !!(response.data && response.data.records),
+        recordsLength: response.data && response.data.records ? response.data.records.length : 'N/A'
+      });
       message.error('未找到备案信息');
       router.push('/user/filing-center');
     }
   } catch (error) {
     console.error('获取备案信息失败:', error);
+    if (error.response) {
+      console.error('错误状态码:', error.response.status);
+      console.error('错误详情:', error.response.data);
+    }
     message.error('获取备案信息失败: ' + (error.message || '未知错误'));
     router.push('/user/filing-center');
   } finally {
@@ -515,43 +542,130 @@ const fetchTemplateContent = async () => {
           if (dataStr.startsWith('{') && dataStr.endsWith('}')) {
             // 看起来是JSON字符串，尝试解析
             try {
-              contentData = JSON.parse(dataStr);
+            contentData = JSON.parse(dataStr);
               console.log('成功解析JSON字符串');
             } catch (parseError) {
               console.error('JSON解析失败:', parseError);
-              message.warning('模板内容格式解析失败，将使用默认模板');
-              contentData = { nodes: [], formData: {} };
+              console.log('解析失败，判断为空内容，尝试从模板定义获取结构');
+              contentData = null; // 设置为null以触发从模板定义获取结构
             }
-          } else if (dataStr.includes('=') && dataStr.includes('&')) {
-            // 看起来是URL参数格式，尝试解析
-            console.log('检测到URL参数格式数据，尝试解析');
-            const params = new URLSearchParams(dataStr);
-            contentData = {
-              nodes: [],
-              formData: {}
-            };
-            
-            // 将URL参数转换为对象
-            params.forEach((value, key) => {
-              try {
-                // 尝试解析每个参数值，可能是JSON
-                contentData.formData[key] = JSON.parse(value);
-              } catch (e) {
-                // 如果解析失败，保持原始值
-                contentData.formData[key] = value;
-              }
-            });
-            
-            message.warning('模板内容格式特殊，已尝试进行转换');
-          } else if (dataStr === "" || dataStr === "null") {
+          } else if (dataStr === "" || dataStr === "null" || dataStr === "{}") {
             // 空内容，使用默认结构
-            console.log('模板内容为空，使用默认结构');
-            contentData = { nodes: [], formData: {} };
-            message.info('模板内容尚未填写，请填写内容后保存');
+            console.log('模板内容为空，尝试从模板定义获取结构');
+            contentData = null; // 设置为null以触发从模板定义获取结构
           } else {
             // 未知格式，无法解析，返回默认结构
             console.error('无法识别的数据格式:', dataStr);
-            message.warning('模板内容格式无法识别，将使用默认模板');
+            contentData = null; // 设置为null以触发从模板定义获取结构
+          }
+        }
+        
+        // 如果内容为空或无效，尝试从模板定义中获取结构
+        if (!contentData || !contentData.nodes || !Array.isArray(contentData.nodes) || contentData.nodes.length === 0) {
+          console.log('用户内容为空或无效，尝试从模板定义获取结构');
+          
+          if (templateInfo.templateId) {
+            try {
+              console.log('获取模板定义: templateId =', templateInfo.templateId);
+              
+              // 获取模板定义
+              const templateResponse = await userTemplateAPI.getTemplateDefinition(templateInfo.templateId);
+              console.log('模板定义响应:', JSON.stringify(templateResponse));
+              
+              if (templateResponse && templateResponse.code === 200 && templateResponse.data) {
+                const templateData = templateResponse.data;
+                
+                if (templateData.templateContent) {
+                  try {
+                    // 解析模板内容
+                    let templateContentData;
+                    if (typeof templateData.templateContent === 'string') {
+                      templateContentData = JSON.parse(templateData.templateContent);
+                    } else {
+                      templateContentData = templateData.templateContent;
+                    }
+                    
+                    console.log('成功解析模板定义内容:', templateContentData);
+                    
+                    // 检查是否是sections格式，如果是则转换为nodes格式
+                    if (templateContentData.sections && Array.isArray(templateContentData.sections)) {
+                      console.log('检测到sections格式，转换为nodes格式');
+                      
+                      // 将sections转换为nodes格式
+                      const nodes = templateContentData.sections.map((section, index) => {
+                        const nodeId = `node_${index + 1}`;
+                        const fields = [];
+                        
+                        // 处理section中的fields
+                        if (section.fields && Array.isArray(section.fields)) {
+                          section.fields.forEach((fieldGroup, fieldIndex) => {
+                            if (fieldGroup.row && Array.isArray(fieldGroup.row)) {
+                              fieldGroup.row.forEach((field, rowIndex) => {
+                                const fieldId = `${nodeId}_field_${fieldIndex}_${rowIndex}`;
+                                fields.push({
+                                  id: fieldId,
+                                  label: field.label || `字段${fields.length + 1}`,
+                                  type: field.type === 'text' ? 'input' : field.type || 'input',
+                                  required: field.required || false,
+                                  example: field.example || `请输入${field.label || '内容'}`,
+                                  guide: field.guide || '',
+                                  props: field.props || {}
+                                });
+                              });
+                            }
+                          });
+                        }
+                        
+                        return {
+                          id: nodeId,
+                          name: section.name || `节点${index + 1}`,
+                          fields: fields
+                        };
+                      });
+                      
+                      contentData = {
+                        nodes: nodes,
+                        formData: {} // 空的表单数据
+                      };
+                      
+                      console.log('成功转换sections为nodes格式:', contentData);
+                      message.success('已从模板定义加载表单结构');
+                    } else if (templateContentData.nodes && Array.isArray(templateContentData.nodes)) {
+                      // 已经是nodes格式，直接使用
+                      console.log('检测到nodes格式，直接使用');
+                      contentData = {
+                        nodes: templateContentData.nodes || [],
+                        formData: {} // 空的表单数据
+                      };
+                      message.success('已从模板定义加载表单结构');
+                    } else {
+                      console.warn('模板定义格式不识别:', templateContentData);
+                      message.warning('模板定义格式不识别，将使用空模板');
+                      contentData = { nodes: [], formData: {} };
+                    }
+                  } catch (parseError) {
+                    console.error('解析模板定义失败:', parseError);
+                    message.warning('模板定义格式错误，将使用空模板');
+                    contentData = { nodes: [], formData: {} };
+                  }
+                } else {
+                  console.warn('模板定义中没有templateContent字段');
+                  message.warning('模板定义不完整，请联系管理员');
+                  contentData = { nodes: [], formData: {} };
+                }
+              } else {
+                console.error('获取模板定义失败:', templateResponse);
+                message.warning('无法获取模板定义，将使用空模板');
+                contentData = { nodes: [], formData: {} };
+              }
+            } catch (templateError) {
+              console.error('获取模板定义异常:', templateError);
+              message.warning('获取模板定义失败，将使用空模板');
+              contentData = { nodes: [], formData: {} };
+            }
+          } else {
+            console.warn('没有找到templateId，无法获取模板定义');
+            message.warning('模板信息不完整，请联系管理员');
             contentData = { nodes: [], formData: {} };
           }
         }
@@ -579,18 +693,9 @@ const fetchTemplateContent = async () => {
             checkAllNodeStatus();
           }, 500);
         } else {
-          // 尝试从模板内容中推断结构
-          console.warn('响应中没有有效的nodes数组，尝试推断结构', contentData);
-          
-          // 如果内容为空或节点为空，可能是新模板，从模板定义中获取结构
-          if (templateInfo.templateId) {
-            // TODO: 可以从模板定义中获取结构
-            console.log('尝试从模板定义获取结构');
-            // 这里可以调用其他API获取模板定义，本次修复暂不实现
-          }
-          
+          console.error('最终内容数据无效:', contentData);
           templateContent.nodes = [];
-          message.warning('模板结构不完整，请联系管理员或重新保存');
+          message.error('模板内容格式错误，请联系管理员');
         }
       } catch (parseError) {
         console.error('解析模板内容失败:', parseError);

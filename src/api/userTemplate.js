@@ -117,6 +117,15 @@ export function getTemplateStatistics() {
   });
 }
 
+// 获取模板定义（普通用户可访问）
+export function getTemplateDefinition(templateId) {
+  return request({
+    url: "/api/userTemplate/getTemplateDefinition",
+    method: "get",
+    params: { templateId },
+  });
+}
+
 // 获取状态类型选项
 export function getStatusOptions() {
   return Promise.resolve({

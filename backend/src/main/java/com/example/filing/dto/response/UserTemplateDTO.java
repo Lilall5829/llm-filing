@@ -2,6 +2,7 @@ package com.example.filing.dto.response;
 
 import java.time.LocalDateTime;
 
+import com.example.filing.entity.SysUser;
 import com.example.filing.entity.TemplateRegistry;
 import com.example.filing.entity.UserTemplate;
 
@@ -26,6 +27,9 @@ public class UserTemplateDTO {
     private String templateName;
     private String templateDescription;
     private String templateType;
+
+    // 用户基本信息
+    private String userName;
 
     // 状态描述
     private String statusDesc;
@@ -59,6 +63,26 @@ public class UserTemplateDTO {
             dto.setTemplateName(templateRegistry.getTemplateName());
             dto.setTemplateDescription(templateRegistry.getTemplateDescription());
             dto.setTemplateType(templateRegistry.getTemplateType());
+        }
+
+        return dto;
+    }
+
+    /**
+     * 从UserTemplate实体转换为DTO，包含用户和模板信息
+     * 
+     * @param userTemplate     UserTemplate实体
+     * @param templateRegistry TemplateRegistry实体（可选）
+     * @param sysUser          SysUser实体（可选）
+     * @return UserTemplateDTO
+     */
+    public static UserTemplateDTO fromEntity(UserTemplate userTemplate, TemplateRegistry templateRegistry,
+            SysUser sysUser) {
+        UserTemplateDTO dto = fromEntity(userTemplate, templateRegistry);
+
+        // 如果提供了用户实体，则复制用户信息
+        if (sysUser != null) {
+            dto.setUserName(sysUser.getUserName());
         }
 
         return dto;
