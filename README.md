@@ -1,127 +1,153 @@
-# 大模型备案信息填报系统
+# Large Model Filing Information Submission System
 
-基于 Vue 3 的大模型备案信息填报系统，包括管理端和用户端。
+A Vue 3-based system for submitting large model filing information, including an **Admin Portal** and a **User Portal**.
 
-## 项目架构
+## System Architecture
 
-- 管理端
+ **Admin Portal**
 
-  - 模板管理
-  - 用户管理
-  - 任务看板
-  - 修改密码
-  - 退出登录
+  * Template Management
+  * User Management
+  * Task Dashboard
+  * Change Password
+  * Logout
 
-- 用户端
-  - 备案申请
-  - 备案中心
-  - 修改密码
-  - 退出登录
+ **User Portal**
 
-## 项目设置
+  * Filing Application
+  * Filing Center
+  * Change Password
+  * Logout
+
+### Project Setup
 
 ```sh
 npm install
 ```
 
-### 开发环境
+### Development Mode
 
 ```sh
 npm run dev
 ```
 
-### 生产环境
+### Production Build
 
 ```sh
 npm run build
 ```
 
-## 项目结构
+## Project Structure
 
 ```
 src/
-├── assets/          # 静态资源
-├── views/           # 页面组件
-│   ├── admin/       # 管理端页面
-│   ├── user/        # 用户端页面
-│   └── common/      # 公共页面
-├── router/          # 路由配置
-├── App.vue          # 根组件
-└── main.js          # 入口文件
+├── assets/          # Static resources
+├── views/           # Page components
+│   ├── admin/       # Admin portal pages
+│   ├── user/        # User portal pages
+│   └── common/      # Shared pages
+├── router/          # Routing configuration
+├── App.vue          # Root component
+└── main.js          # Entry point
 ```
 
-### Lint with [ESLint](https://eslint.org/)
+### Linting with [ESLint](https://eslint.org/)
 
 ```sh
 npm run lint
 ```
 
-# 在Talend API Tester中配置multipart/form-data请求
+---
 
-## 基本步骤
+# Configuring multipart/form-data Requests in Talend API Tester
 
-1. **打开Talend API Tester**
-   - 点击Chrome浏览器右上角的扩展图标，选择Talend API Tester
+## Basic Steps
 
-2. **创建新请求**
-   - 点击"+"按钮创建新请求
-   - 输入请求名称，例如"保存模板"
+1. **Open Talend API Tester**
 
-3. **设置请求方法和URL**
-   - 选择方法：POST
-   - 输入URL：`http://your-api-host/api/templateRegistry/saveTemplateRegistry`
+   * Click the Talend API Tester extension icon in Chrome
 
-4. **添加认证头**
-   - 在"Headers"标签下点击"Add header"
-   - 名称：`Authorization`
-   - 值：`Bearer your_token_here`（替换为实际token）
+2. **Create a New Request**
 
-## 配置multipart/form-data
+   * Click the "+" button to create a new request
+   * Enter a name like `Save Template`
 
-5. **选择正确的内容类型**
-   - 在Body标签中，选择"form-data"选项（不要选择"raw"或"x-www-form-urlencoded"）
+3. **Set Request Method and URL**
 
-6. **添加文件参数**
-   - 点击"Add parameter"
-   - 名称：`file`
-   - 类型：选择文件类型（在参数右侧有一个文件图标可点击）
-   - 点击"Choose file"按钮上传Word模板文件
+   * Method: `POST`
+   * URL:
 
-7. **添加JSON数据参数**
-   - 点击"Add parameter"
-   - 名称：`data`
-   - 类型：保持为文本类型
-   - 值：输入完整的JSON对象（确保使用双引号，并且是一个有效的JSON字符串）
-   - 例如：
-   ```json
-   {"templateName":"企业备案申请表","templateCode":"TPL-2023001","templateDescription":"企业备案申请模板","templateType":"企业备案","templateContent":"{\"sections\":[{\"sectionTitle\":\"基本信息\",\"fields\":[{\"id\":\"name\",\"label\":\"企业名称\",\"type\":\"text\"}]}]}"}
-   ```
+     ```
+     http://your-api-host/api/templateRegistry/saveTemplateRegistry
+     ```
 
-## 避免常见错误
+4. **Add Authorization Header**
 
-1. **确保JSON格式正确**
-   - 所有键名必须用双引号
-   - 字符串值必须用双引号
-   - 不要有多余的逗号
-   - templateContent中的JSON需要作为字符串（被转义）
+   * In the “Headers” tab, click `Add header`
+   * Name: `Authorization`
+   * Value: `Bearer your_token_here` (replace with your actual token)
 
-2. **注意multipart边界**
-   - Talend会自动处理multipart/form-data的边界，无需手动设置Content-Type header
+## Configure multipart/form-data
 
-3. **检查参数名称**
-   - 确保参数名称正确：`file`和`data`，区分大小写
+5. **Select Correct Content Type**
 
-## 发送请求
+   * In the "Body" tab, choose `form-data` (not `raw` or `x-www-form-urlencoded`)
 
-8. **发送请求**
-   - 点击"Send"按钮
-   - 观察状态码和响应体
+6. **Add File Parameter**
 
-9. **查看请求详情**
-   - 在请求发送后，可以在"Request"标签查看完整的请求内容
-   - 确保Content-Type包含`multipart/form-data; boundary=...`
+   * Click `Add parameter`
+   * Name: `file`
+   * Type: File (click the file icon)
+   * Upload a Word template file via `Choose file`
 
-如果模板名称不能为空错误仍然出现，请确认:
-- data参数中的JSON包含templateName字段
-- JSON格式完全正确
-- 没有使用错误的参数名（如"formData"代替"data"）
+7. **Add JSON Data Parameter**
+
+   * Click `Add parameter`
+   * Name: `data`
+   * Type: Text
+   * Value: A valid JSON string (double-quoted keys and values)
+   * Example:
+
+     ```json
+     {
+       "templateName": "Enterprise Filing Application",
+       "templateCode": "TPL-2023001",
+       "templateDescription": "Template for enterprise filing",
+       "templateType": "Enterprise Filing",
+       "templateContent": "{\"sections\":[{\"sectionTitle\":\"Basic Info\",\"fields\":[{\"id\":\"name\",\"label\":\"Enterprise Name\",\"type\":\"text\"}]}]}"
+     }
+     ```
+
+## Common Error Prevention
+
+1. **Ensure Valid JSON Format**
+
+   * All keys and string values must use double quotes
+   * No trailing commas
+   * The `templateContent` must be a valid stringified JSON
+
+2. **Do Not Manually Set multipart Boundaries**
+
+   * Talend handles `multipart/form-data` boundaries automatically
+
+3. **Verify Parameter Names**
+
+   * Parameters must be exactly named `file` and `data` (case-sensitive)
+
+## Sending the Request
+
+8. **Send the Request**
+
+   * Click the `Send` button
+   * Check the status code and response
+
+9. **Inspect Request Details**
+
+   * After sending, check the “Request” tab to verify the full request
+   * Ensure the `Content-Type` includes `multipart/form-data; boundary=...`
+
+### If You Encounter `"templateName cannot be empty"` Error:
+
+* Ensure the `data` parameter contains the `templateName` field
+* Verify the JSON is 100% valid
+* Do **not** mislabel the `data` parameter (e.g., using `"formData"`)
