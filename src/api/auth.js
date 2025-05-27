@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // const baseURL = "http://115.159.105.90:8822";
-const baseURL = "http://localhost:8080";
+const baseURL = "";
 // 创建axios实例
 const request = axios.create({
   baseURL,

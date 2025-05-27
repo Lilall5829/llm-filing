@@ -13,7 +13,7 @@ export function getAppliedTemplateList(params) {
 export function applyTemplate(templateId, userIds) {
   // 构造请求数据
   const requestData = {
-    userIds: ["testuser2"], // 使用具体的登录名，让后端处理转换
+    userIds: userIds, // 使用具体的登录名，让后端处理转换
   };
 
   console.log("申请模板参数:", { templateId, requestData });
