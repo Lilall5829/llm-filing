@@ -1,7 +1,7 @@
 <template>
   <div class="template">
     <!-- <a-page-header
-      :title="isViewMode ? '模板查看' : '模板编辑'"
+      :title="isViewMode ? $t('template.templateView') : $t('template.templateEdit')"
       :back-icon="true"
       @back="() => router.back()"
     /> -->
@@ -13,41 +13,41 @@
       >
         <a-space wrap class="form-space">
           <a-form-item
-            label="模板名称"
+            :label="$t('template.templateName')"
             name="name"
-            :rules="[{ required: true, message: '请输入模板名称' }]"
+            :rules="[{ required: true, message: $t('template.pleaseInputTemplateName') }]"
             class="name-item"
           >
             <a-input
               v-model:value="templateForm.name"
-            placeholder="请输入模板名称"
+              :placeholder="$t('template.pleaseInputTemplateName')"
               allow-clear
             />
           </a-form-item>
 
           <a-form-item
-            label="备案编号"
+            :label="$t('template.templateCode')"
             name="code"
-            :rules="[{ required: false, message: '请输入备案编号' }]"
+            :rules="[{ required: false, message: $t('template.pleaseInputTemplateCode') }]"
             class="code-item"
           >
             <a-input
               v-model:value="templateForm.code"
-              placeholder="请输入备案编号（可选，留空将自动生成）"
+              :placeholder="$t('template.pleaseInputTemplateCode')"
               allow-clear
             />
           </a-form-item>
 
           <a-form-item
-            label="模板类型"
+            :label="$t('template.templateType')"
             name="type"
-            :rules="[{ required: true, message: '请输入或选择模板类型' }]"
+            :rules="[{ required: true, message: $t('template.pleaseInputOrSelectTemplateType') }]"
             class="type-item"
           >
             <a-auto-complete
               v-model:value="templateForm.type"
               :options="templateTypeOptions"
-              placeholder="请输入或选择模板类型"
+              :placeholder="$t('template.pleaseInputOrSelectTemplateType')"
               allow-clear
               :filter-option="filterTemplateTypes"
               class="type-select"
@@ -57,7 +57,7 @@
           <a-form-item class="button-item">
             <a-button type="primary" @click="handleImportWord" class="export-button">
               <template #icon><UploadOutlined /></template>
-              导入Word模板
+              {{ $t('template.importWordTemplate') }}
             </a-button>
             <span v-if="templateForm.fileName" class="file-name-text">
               {{ templateForm.fileName }}
@@ -68,11 +68,11 @@
     </a-card>
 
     <a-card class="content-card">
-      <a-form-item label="填写节点列表" class="node-selector">
+      <a-form-item :label="$t('template.nodeList')" class="node-selector">
         <a-space wrap class="node-space">
           <a-select
             v-model:value="selectedNode"
-            placeholder="请选择节点"
+            :placeholder="$t('template.pleaseSelectNode')"
             class="node-select"
           >
             <template v-for="node in customNodes" :key="node.id">
@@ -84,14 +84,14 @@
           </a-select>
           <a-button type="primary" @click="showAddNodeModal" class="add-node-button">
             <template #icon><PlusOutlined /></template>
-            添加节点
+            {{ $t('template.addNode') }}
           </a-button>
         </a-space>
       </a-form-item>
 
       <div class="node-content">
         <div class="preview-header">
-          <h3>节点预览</h3>
+          <h3>{{ $t('template.nodePreview') }}</h3>
         </div>
         <template v-if="selectedNode">
           <a-form
@@ -136,7 +136,7 @@
                   v-else
                         :is="getFieldComponent(cell.type)"
                         v-model:value="currentNodeForm[`field_${fieldIndex}_${cellIndex}`]"
-                        :placeholder="`请${cell.type === 'select' ? '选择' : '输入'}${cell.label}`"
+                        :placeholder="$t('template.placeholders.pleaseSelectOrInput', { action: $t(`template.placeholders.${cell.type === 'select' ? 'select' : 'input'}`), label: cell.label })"
                         :rows="cell.type === 'textarea' || cell.type === 'richtext' ? 4 : undefined"
                   disabled
                 />
@@ -148,17 +148,17 @@
           </a-form>
         </template>
         <template v-else>
-          <a-empty description="请选择节点" />
+          <a-empty :description="$t('template.pleaseSelectNode')" />
         </template>
       </div>
 
       <!-- 字段编辑器区域 -->
       <div v-if="selectedNode" class="field-editor">
         <div class="field-editor-header">
-          <h3>{{ getCurrentNodeName() }} - 字段管理</h3>
+          <h3>{{ getCurrentNodeName() }} - {{ $t('template.fieldManagement') }}</h3>
           <a-button type="primary" @click="handleAddField">
             <template #icon><PlusOutlined /></template>
-            添加新字段
+            {{ $t('template.addNewField') }}
           </a-button>
         </div>
 
@@ -166,7 +166,7 @@
           <template v-for="(field, index) in getCurrentNodeFields()" :key="index">
             <div class="field-item">
               <div class="field-header">
-                <span class="field-index">第{{ index + 1 }}项</span>
+                <span class="field-index">{{ $t('template.fieldItem', { index: index + 1 }) }}</span>
                 <div class="field-actions">
                   <a-space wrap class="action-buttons">
                     <a-button 
@@ -176,7 +176,7 @@
                       class="action-button"
                     >
                       <template #icon><UpOutlined /></template>
-                      向上移动
+                      {{ $t('template.moveUp') }}
                     </a-button>
                     <a-button 
                       type="link" 
@@ -185,7 +185,7 @@
                       class="action-button"
                     >
                       <template #icon><DownOutlined /></template>
-                      向下移动
+                      {{ $t('template.moveDown') }}
                     </a-button>
                     <a-button 
                       type="link" 
@@ -194,7 +194,7 @@
                       class="action-button"
                     >
                       <template #icon><DeleteOutlined /></template>
-                      删除
+                      {{ $t('common.delete') }}
                     </a-button>
                   </a-space>
         </div>
@@ -202,43 +202,43 @@
 
               <template v-for="(cell, cellIndex) in (field.row || [])" :key="cellIndex">
               <a-form layout="inline" class="field-form">
-                <a-form-item label="字段名称" class="field-form-item">
+                <a-form-item :label="$t('template.fieldName')" class="field-form-item">
                   <a-input
                       v-model:value="cell.label"
-                    placeholder="请输入字段名称"
+                    :placeholder="$t('template.pleaseInputFieldName')"
                     class="field-input"
                   />
                 </a-form-item>
 
-                <a-form-item label="字段类型" class="field-form-item">
+                <a-form-item :label="$t('template.fieldType')" class="field-form-item">
                   <a-select
                       v-model:value="cell.type"
                     class="field-input"
                   >
-                      <a-select-option value="text">文本输入</a-select-option>
-                      <a-select-option value="textarea">多行文本</a-select-option>
-                      <a-select-option value="richtext">富文本</a-select-option>
-                    <a-select-option value="select">下拉选择</a-select-option>
-                    <a-select-option value="date">日期选择</a-select-option>
-                    <a-select-option value="checkbox">多选框</a-select-option>
-                      <a-select-option value="radio">单选框</a-select-option>
+                      <a-select-option value="text">{{ $t('template.fieldTypes.text') }}</a-select-option>
+                      <a-select-option value="textarea">{{ $t('template.fieldTypes.textarea') }}</a-select-option>
+                      <a-select-option value="richtext">{{ $t('template.fieldTypes.richtext') }}</a-select-option>
+                    <a-select-option value="select">{{ $t('template.fieldTypes.select') }}</a-select-option>
+                    <a-select-option value="date">{{ $t('template.fieldTypes.date') }}</a-select-option>
+                    <a-select-option value="checkbox">{{ $t('template.fieldTypes.checkbox') }}</a-select-option>
+                      <a-select-option value="radio">{{ $t('template.fieldTypes.radio') }}</a-select-option>
                   </a-select>
                 </a-form-item>
 
-                  <a-form-item label="列宽" class="field-form-item">
+                  <a-form-item :label="$t('template.columnWidth')" class="field-form-item">
                     <a-select
                       v-model:value="cell.colspan"
                     class="field-input"
                     >
-                      <a-select-option :value="1">1列</a-select-option>
-                      <a-select-option :value="2">2列</a-select-option>
+                      <a-select-option :value="1">{{ $t('template.columnOptions.oneColumn') }}</a-select-option>
+                      <a-select-option :value="2">{{ $t('template.columnOptions.twoColumns') }}</a-select-option>
                     </a-select>
                 </a-form-item>
 
-                  <a-form-item label="字段描述" class="field-form-item">
+                  <a-form-item :label="$t('template.fieldDescription')" class="field-form-item">
                   <a-input
                       v-model:value="cell.description"
-                      placeholder="请输入字段描述"
+                      :placeholder="$t('template.pleaseInputFieldDescription')"
                     class="field-input"
                   />
                 </a-form-item>
@@ -246,15 +246,15 @@
                   <template v-if="['checkbox', 'radio', 'select'].includes(cell.type)">
                   <div class="field-options-editor">
                     <div class="field-options-header">
-                      <h4>选项配置</h4>
+                      <h4>{{ $t('template.optionConfig') }}</h4>
                         <a-button type="link" @click="addOption(cell)">
                           <template #icon><PlusOutlined /></template>
-                          添加选项
+                          {{ $t('template.addOption') }}
                         </a-button>
                     </div>
                       <template v-if="!cell.options || cell.options.length === 0">
                         <div class="empty-options">
-                          <a-empty description="暂无选项，请添加" />
+                          <a-empty :description="$t('template.noOptions')" />
                           </div>
                       </template>
                       <template v-else>
@@ -263,7 +263,7 @@
                                 <a-input
                               :value="option"
                               @update:value="(val) => updateOptionValue(cell, optionIndex, val)"
-                                  placeholder="选项值"
+                                  :placeholder="$t('template.optionValue')"
                                   class="option-input"
                                 />
                                 <a-button
@@ -271,7 +271,7 @@
                                   danger
                               @click="() => deleteOption(cell, optionIndex)"
                             >
-                              删除
+                              {{ $t('template.deleteOption') }}
                             </a-button>
                           </div>
                         </div>
@@ -285,13 +285,13 @@
         </div>
 
         <div v-if="getCurrentNodeFields().length === 0" class="empty-fields">
-          <a-empty description="暂无字段，请添加新字段" />
+          <a-empty :description="$t('template.noFields')" />
           </div>
 
         <div class="field-editor-footer">
           <a-button type="dashed" block @click="handleAddField" style="margin-bottom: 16px">
             <template #icon><PlusOutlined /></template>
-            添加下一项
+            {{ $t('template.addNextField') }}
           </a-button>
           
           <a-button 
@@ -301,7 +301,7 @@
             @click="handleSaveNode"
           >
             <template #icon><SaveOutlined /></template>
-            保存修改
+            {{ $t('template.saveChanges') }}
           </a-button>
         </div>
       </div>
@@ -310,33 +310,22 @@
     <!-- 添加节点对话框 -->
     <a-modal
       v-model:visible="addNodeModalVisible"
-      title="添加节点"
+      :title="$t('template.addNodeDialog')"
       @ok="handleAddNode"
       @cancel="handleCancelAddNode"
     >
       <a-form layout="vertical">
         <a-form-item
-          label="节点名称"
-          :rules="[{ required: true, message: '请输入节点名称' }]"
+          :label="$t('template.nodeName')"
+          :rules="[{ required: true, message: $t('template.pleaseInputNodeName') }]"
         >
-          <a-input v-model:value="newNodeName" placeholder="请输入节点名称" v-if="availableNodeNames.length === 0" />
-          <a-select 
-            v-else
-            v-model:value="newNodeName" 
-            placeholder="请选择或输入节点名称"
-            showSearch
+          <a-auto-complete
+            v-model:value="newNodeName"
+            :options="availableNodeOptions"
+            :placeholder="$t('template.pleaseSelectOrInputNodeName')"
+            :filter-option="filterNodeOptions"
             allow-clear
-            :filter-option="(input, option) => 
-              option.value.toLowerCase().indexOf(input.toLowerCase()) >= 0"
-          >
-            <a-select-option 
-              v-for="nodeName in availableNodeNames" 
-              :key="nodeName" 
-              :value="nodeName"
-            >
-              {{ nodeName }}
-            </a-select-option>
-          </a-select>
+          />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -355,11 +344,13 @@ UploadOutlined,
 UpOutlined
 } from '@ant-design/icons-vue';
 import { message, Modal } from 'ant-design-vue';
-import { onMounted, reactive, ref, watch } from "vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import { useRoute, useRouter } from "vue-router";
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const templateId = route.query.id;
 const isViewMode = route.query.mode === "view";
 // 标记是否通过导入Word已经创建了模板
@@ -383,6 +374,19 @@ const customNodes = ref([]);
 
 // 可用节点名称列表 - 从API获取
 const availableNodeNames = ref([]);
+
+// 可用节点选项 - 转换为AutoComplete需要的格式
+const availableNodeOptions = computed(() => {
+  return availableNodeNames.value.map(name => ({
+    label: name,
+    value: name
+  }));
+});
+
+// 过滤节点选项
+const filterNodeOptions = (inputValue, option) => {
+  return option.value.toLowerCase().includes(inputValue.toLowerCase());
+};
 
 // 节点表单数据
 const nodeForms = reactive({});
@@ -485,7 +489,7 @@ const fetchTemplateTypes = async () => {
     }
   } catch (error) {
     console.error('获取模板类型列表失败:', error);
-    message.error('获取模板类型列表失败');
+    message.error(t('template.getTemplateTypesFailed'));
     // 发生错误时，设置为空数组
     templateTypeOptions.value = [];
   }
@@ -547,26 +551,26 @@ watch(selectedNode, (newValue) => {
 // 处理保存节点
 const handleSaveNode = async () => {
   if (!selectedNode.value) {
-    message.error('请选择要保存的节点');
+    message.error(t('template.pleaseSelectNodeToSave'));
     return;
   }
 
   // 防止重复提交
   if (isSubmitting.value || saving.value) {
-    message.info('正在保存中，请勿重复操作');
+    message.info(t('template.savingInProgress'));
     return;
   }
 
   // 验证字段
   const fields = getCurrentNodeFields();
   if (fields.length === 0) {
-    message.error('请至少添加一个字段');
+    message.error(t('template.pleaseAddAtLeastOneField'));
     return;
   }
 
   for (const field of fields) {
     if (!field.row || !field.row.length || !field.row[0].label) {
-      message.error('请填写所有字段的名称');
+      message.error(t('template.pleaseNameAllFields'));
       return;
     }
   }
@@ -602,7 +606,7 @@ const handleSaveNode = async () => {
     
     // 如果是新建模式（非编辑模式）且没有上传文件，显示提示
     if (!isEditMode && !hasFile) {
-      message.warning('请先通过"导入Word模板"上传模板文件');
+      message.warning(t('template.uploadTemplateFileFirst'));
       saving.value = false;
       return;
     }
@@ -616,12 +620,12 @@ const handleSaveNode = async () => {
       const currentTemplateId = route.query.id;
       if (currentTemplateId) {
         templateDataToSave.id = currentTemplateId;
-        saveOperationType = '更新导入创建的模板';
+        saveOperationType = t('template.updateImportedTemplate');
       }
     } else if (templateId) {
-      saveOperationType = '更新现有模板';
+      saveOperationType = t('template.updateExistingTemplate');
     } else {
-      saveOperationType = '创建新模板';
+      saveOperationType = t('template.createNewTemplate');
     }
 
     // 保存模板，只在有新上传文件时传入文件
@@ -658,10 +662,10 @@ const handleImportWord = async () => {
     // 如果是编辑模式并且已有文件，提示用户
     if ((templateId || templateCreatedByImport.value) && templateForm.hasExistingFile) {
       Modal.confirm({
-        title: '导入确认',
-        content: '该模板已有关联文档，重新导入将会替换原有文档。是否继续？',
-        okText: '继续导入',
-        cancelText: '取消',
+        title: t('template.confirmImport'),
+        content: t('template.replaceExistingDoc'),
+        okText: t('template.continueImport'),
+        cancelText: t('common.cancel'),
         onOk: () => triggerFileUpload(),
       });
     } else {
@@ -669,7 +673,7 @@ const handleImportWord = async () => {
     }
   } catch (error) {
     console.error('导入操作失败:', error);
-    message.error('导入操作失败，请重试');
+    message.error(t('template.importFailed'));
   }
 };
 
@@ -692,7 +696,7 @@ const triggerFileUpload = () => {
     templateForm.fileName = file.name;
     
     // 显示上传中提示
-    const loadingMessage = message.loading('正在上传并处理模板文件...', 0);
+    const loadingMessage = message.loading(t('template.uploadingAndProcessing'), 0);
     
     try {
       // 准备要提交的基本信息
@@ -738,7 +742,7 @@ const triggerFileUpload = () => {
             }
           } catch (e) {
             console.error('解析模板内容失败:', e);
-            message.error('模板内容解析失败');
+            message.error(t('template.parseTemplateContentFailed'));
           }
         }
         
@@ -752,11 +756,11 @@ const triggerFileUpload = () => {
           templateCreatedByImport.value = true;
         }
         
-        message.success('导入成功');
+        message.success(t('template.importSuccess'));
       }
   } catch (error) {
       console.error('导入失败:', error);
-      message.error(error.message || '导入失败，请重试');
+      message.error(error.message || t('template.importFailed'));
     } finally {
       // 关闭加载提示
       loadingMessage();
@@ -772,12 +776,12 @@ const handleBeforeUpload = (file) => {
   const isDoc = file.type === 'application/msword' || 
                 file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
   if (!isDoc) {
-    message.error('只能上传Word文档！');
+    message.error(t('template.onlyWordFiles'));
     return false;
   }
   const isLt2M = file.size / 1024 / 1024 < 2;
   if (!isLt2M) {
-    message.error('文件大小不能超过 2MB！');
+    message.error(t('template.fileSizeLimit'));
     return false;
   }
   return true;
@@ -791,7 +795,7 @@ const showAddNodeModal = () => {
 // 处理添加节点
 const handleAddNode = () => {
   if (!newNodeName.value) {
-    message.error('请输入节点名称');
+    message.error(t('template.pleaseInputNodeName'));
     return;
   }
 
@@ -814,7 +818,7 @@ const handleAddNode = () => {
   
   // 自动选中新创建的节点
   selectedNode.value = nodeId;
-  message.success('节点添加成功');
+  message.success(t('template.nodeAddSuccess'));
 };
 
 // 取消添加节点
@@ -891,7 +895,7 @@ const moveField = (index, direction) => {
 // 修改删除字段方法
 const deleteField = (index) => {
   getCurrentNodeFields().splice(index, 1);
-  message.success('字段删除成功');
+  message.success(t('template.fieldDeleteSuccess'));
 };
 
 // 添加选项
@@ -1090,13 +1094,13 @@ onMounted(async () => {
             }
           } catch (e) {
             console.error('解析模板内容失败:', e);
-            message.error('模板内容解析失败');
+            message.error(t('template.parseTemplateContentFailed'));
           }
         }
       }
     } catch (error) {
       console.error('获取模板详情失败:', error);
-      message.error(error.message || '获取模板详情失败');
+      message.error(error.message || t('template.getTemplateDetailFailed'));
     } finally {
       saving.value = false;
     }

@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
+import i18n from "../i18n";
 
 // 管理端布局和页面
 import AdminLayout from "../views/admin/AdminLayout.vue";
@@ -24,43 +25,43 @@ const router = createRouter({
           path: "",
           name: "template-management",
           component: TemplateManagement,
-          meta: { title: "模板管理" },
+          meta: { titleKey: "pageTitle.templateManagement" },
         },
         {
           path: "template",
           name: "template",
           component: () => import("../views/admin/Template.vue"),
-          meta: { title: "模板" },
+          meta: { titleKey: "template.title" },
         },
         {
           path: "user-management",
           name: "user-management",
           component: () => import("../views/admin/UserManagement.vue"),
-          meta: { title: "用户管理" },
+          meta: { titleKey: "pageTitle.userManagement" },
         },
         {
           path: "task-board",
           name: "task-board",
           component: () => import("../views/admin/TaskBoard.vue"),
-          meta: { title: "任务看板" },
+          meta: { titleKey: "pageTitle.taskBoard" },
         },
         {
           path: "application-management",
           name: "application-management",
           component: () => import("../views/admin/ApplicationManagement.vue"),
-          meta: { title: "申请管理" },
+          meta: { titleKey: "pageTitle.applicationManagement" },
         },
         {
           path: "content-review",
           name: "content-review",
           component: () => import("../views/admin/ContentReview.vue"),
-          meta: { title: "内容审核" },
+          meta: { titleKey: "application.review" },
         },
         {
           path: "application-review",
           name: "application-review",
           component: () => import("../views/admin/ApplicationReview.vue"),
-          meta: { title: "申请审核" },
+          meta: { titleKey: "application.review" },
         },
       ],
     },
@@ -73,19 +74,19 @@ const router = createRouter({
           path: "",
           name: "filing-application",
           component: FilingApplication,
-          meta: { title: "备案申请" },
+          meta: { titleKey: "application.title" },
         },
         {
           path: "filing-center",
           name: "filing-center",
           component: () => import("../views/user/FilingCenter.vue"),
-          meta: { title: "备案中心" },
+          meta: { titleKey: "application.title" },
         },
         {
           path: "filing-edit",
           name: "filing-edit",
           component: () => import("../views/user/FilingEdit.vue"),
-          meta: { title: "编辑备案" },
+          meta: { titleKey: "application.title" },
         },
       ],
     },
@@ -94,14 +95,14 @@ const router = createRouter({
       path: "/login",
       name: "login",
       component: () => import("../views/common/Login.vue"),
-      meta: { title: "登录" },
+      meta: { titleKey: "pageTitle.login" },
     },
     // 404页面
     {
       path: "/:pathMatch(.*)*",
       name: "not-found",
       component: () => import("../views/common/NotFound.vue"),
-      meta: { title: "页面未找到" },
+      meta: { titleKey: "pageTitle.notFound" },
     },
   ],
 });
@@ -109,9 +110,11 @@ const router = createRouter({
 // 路由守卫，可以在这里添加权限控制等功能
 router.beforeEach((to, from, next) => {
   // 设置页面标题
-  document.title = to.meta.title
-    ? `${to.meta.title} - 大模型备案信息填报系统`
-    : "大模型备案信息填报系统";
+  const { t } = i18n.global;
+  const pageTitle = to.meta.titleKey ? t(to.meta.titleKey) : t("system.title");
+  document.title = to.meta.titleKey
+    ? `${pageTitle} - ${t("system.title")}`
+    : t("system.title");
 
   // 获取用户信息和token
   const token = localStorage.getItem("token");

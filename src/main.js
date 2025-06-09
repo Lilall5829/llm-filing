@@ -1,23 +1,22 @@
-import Antd from "ant-design-vue";
-import "ant-design-vue/dist/reset.css";
-import { createPinia } from "pinia";
 import { createApp } from "vue";
 import App from "./App.vue";
-import "./assets/main.css";
+import i18n from "./i18n";
 import router from "./router";
 
-// 开发环境下引入Mock数据服务
-// 禁用Mock服务，使用真实后端API
-// if (process.env.NODE_ENV === "development") {
-//   import("./mock/index.js").then(() => {
+// 引入Ant Design Vue
+import Antd from "ant-design-vue";
+import "ant-design-vue/dist/reset.css";
+
+// 如果需要使用Mock数据，取消注释下面的行
+// import './mock'
+// if (process.env.NODE_ENV === 'development') {
 //     console.log("Mock服务已加载");
-//   });
 // }
 
 const app = createApp(App);
 
-app.use(createPinia());
 app.use(router);
 app.use(Antd);
+app.use(i18n);
 
 app.mount("#app");

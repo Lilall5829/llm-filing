@@ -2,7 +2,7 @@
   <div class="user-layout">
     <div class="sidebar">
       <div class="logo">
-        <h1>大模型备案信息填报系统</h1>
+        <h1>{{ $t("system.title") }}</h1>
       </div>
       <div class="menu">
         <div
@@ -10,24 +10,27 @@
           :class="{ active: $route.name === 'filing-application' }"
           @click="$router.push({ name: 'filing-application' })"
         >
-          <span>备案申请</span>
+          <span>{{ $t("userMenu.filingApplication") }}</span>
         </div>
         <div
           class="menu-item"
           :class="{ active: $route.name === 'filing-center' }"
           @click="$router.push({ name: 'filing-center' })"
         >
-          <span>备案中心</span>
+          <span>{{ $t("userMenu.filingCenter") }}</span>
         </div>
         <div class="menu-item" @click="handleLogout">
-          <span>退出登录</span>
+          <span>{{ $t("userMenu.logout") }}</span>
         </div>
       </div>
     </div>
     <div class="main-content">
       <div class="header">
         <div class="current-user">
-          <span>您好，{{ userName }}</span>
+          <span>{{ $t("user.hello", { name: userName }) }}</span>
+        </div>
+        <div class="header-actions">
+          <LanguageSwitcher />
         </div>
       </div>
       <div class="content">
@@ -38,17 +41,20 @@
 </template>
 
 <script setup>
-import { logout } from '@/api/auth';
-import { message } from 'ant-design-vue';
-import { onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { logout } from "@/api/auth";
+import { message } from "ant-design-vue";
+import { onMounted, ref } from "vue";
+import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
+import LanguageSwitcher from "../../components/LanguageSwitcher.vue";
 
 const router = useRouter();
-const userName = ref('用户');
+const { t } = useI18n();
+const userName = ref(t("user.admin"));
 
 onMounted(() => {
   // 获取用户名
-  const storedUserName = localStorage.getItem('userName');
+  const storedUserName = localStorage.getItem("userName");
   if (storedUserName) {
     userName.value = storedUserName;
   }
@@ -56,13 +62,12 @@ onMounted(() => {
 
 const handleLogout = async () => {
   try {
-    // 调用登出函数
     await logout();
-    message.success('退出登录成功');
-    router.push('/login');
+    message.success(t("user.logoutSuccess"));
+    router.push("/login");
   } catch (error) {
-    console.error('退出登录失败:', error);
-    message.error('退出登录失败，请重试');
+    console.error("退出登录失败:", error);
+    message.error(t("user.logoutFailed"));
   }
 };
 </script>
@@ -89,14 +94,18 @@ const handleLogout = async () => {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 16px;
+  padding: 12px 8px;
   border-bottom: 1px solid #002140;
 }
 
 .logo h1 {
-  font-size: 20px;
+  font-size: 14px;
   color: white;
   margin-bottom: 4px;
+  text-align: center;
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .logo p {
@@ -139,7 +148,7 @@ const handleLogout = async () => {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   padding: 0 24px;
 }
 
@@ -147,9 +156,15 @@ const handleLogout = async () => {
   margin-right: 16px;
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .content {
   flex: 1;
   padding: 24px;
   overflow-y: auto;
 }
-</style> 
+</style>

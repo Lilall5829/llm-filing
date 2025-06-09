@@ -94,77 +94,43 @@ export function saveTemplate(data, file) {
 }
 
 // 删除模板
-export function deleteTemplate(templateId) {
-  // 确保templateId是有效值
-  if (!templateId) {
+export const deleteTemplate = async (id) => {
+  if (!id) {
     console.error("删除模板失败: 未提供有效的模板ID");
-    return Promise.reject(new Error("模板ID不能为空"));
+    throw new Error("模板ID不能为空");
   }
 
-  return request({
-    url: `/api/templateRegistry/deleteTemplate`,
-    method: "delete",
-    params: { id: templateId },
-    // 增加超时时间，确保操作有足够时间完成
-    timeout: 10000,
-    // 重试机制
-    retry: 2,
-    retryDelay: 1000,
-    validateStatus: function (status) {
-      // 接受所有状态码，不让axios抛出错误，以便我们可以自定义错误处理
-      return true;
-    },
-  })
-    .then((response) => {
-      // 检查HTTP状态码
-      if (response.status >= 400) {
-        console.error(
-          `删除API HTTP错误: ${response.status} - ${
-            response.statusText || "无状态文本"
-          }`
-        );
-        return Promise.reject(
-          new Error(
-            `服务器返回错误: ${response.status} ${response.statusText || ""}`
-          )
-        );
+  try {
+    const response = await request.delete(
+      `/api/templateRegistry/deleteTemplate`,
+      {
+        params: { id },
       }
+    );
 
-      // 检查响应状态
-      if (response.code !== 200) {
-        console.error(
-          `删除API业务错误: code=${response.code}, message=${
-            response.message || "无错误消息"
-          }`
-        );
-        return Promise.reject(
-          new Error(response.message || "删除失败，服务器未返回成功状态")
-        );
-      }
-
+    // 检查返回结果
+    if (response && response.code === 200) {
       return response;
-    })
-    .catch((error) => {
+    } else {
       console.error("删除模板API错误:", error);
 
-      // 详细记录错误信息
+      // 详细错误信息记录
       if (error.response) {
-        // 服务器返回了错误响应
         console.error("错误状态:", error.response.status);
         console.error("错误头信息:", error.response.headers);
         console.error("错误数据:", error.response.data);
       } else if (error.request) {
-        // 请求已发送但没有收到响应
         console.error("未收到响应，请求信息:", error.request);
       } else {
-        // 请求设置阶段出错
         console.error("请求配置错误:", error.message);
       }
 
-      // 重新抛出错误，让调用方处理
       throw error;
-    });
-}
+    }
+  } catch (error) {
+    throw new Error(`删除模板失败: ${response?.message || "服务器错误"}`);
+  }
+};
 
 // 导入Word模板
 export function importWordTemplate(file, templateName, templateType) {

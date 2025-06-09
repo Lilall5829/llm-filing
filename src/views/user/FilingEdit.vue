@@ -3,10 +3,10 @@
     <div class="filing-edit">
       <div class="header-container">
         <div class="title-section">
-          <h2 class="page-title">{{ isReadonly ? '查看备案' : '编辑备案' }}</h2>
+          <h2 class="page-title">{{ isReadonly ? $t('filingEdit.viewTitle') : $t('filingEdit.editTitle') }}</h2>
           <div class="submission-info" v-if="!isReadonly">
             <a-tag color="processing">
-              完成进度: {{ completedSteps }} / {{ templateContent.nodes?.length || 0 }} 节点
+              {{ $t('filingEdit.completionProgress', { completed: completedSteps, total: templateContent.nodes?.length || 0 }) }}
             </a-tag>
           </div>
         </div>
@@ -14,14 +14,14 @@
 
       <a-spin :spinning="loading">
         <a-card class="info-card">
-          <a-descriptions title="基本信息" bordered :column="{ xxl: 3, xl: 3, lg: 3, md: 2, sm: 1, xs: 1 }">
-            <a-descriptions-item label="模板编号">{{ templateInfo.templateCode || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="模板名称">{{ templateInfo.templateName || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="申请时间">{{ templateInfo.createTime || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="更新时间">{{ templateInfo.updateTime || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="状态">
+          <a-descriptions :title="$t('filingEdit.basicInfo')" bordered :column="{ xxl: 3, xl: 3, lg: 3, md: 2, sm: 1, xs: 1 }">
+            <a-descriptions-item :label="$t('filingEdit.templateCode')">{{ templateInfo.templateCode || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('filingEdit.templateName')">{{ templateInfo.templateName || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('filingEdit.applicationTime')">{{ templateInfo.createTime || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('common.updateTime')">{{ templateInfo.updateTime || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('common.status')">
               <a-tag :color="getStatusColor(templateInfo.status)">
-                {{ templateInfo.statusDesc || getStatusText(templateInfo.status) }}
+                {{ getStatusText(templateInfo.status) }}
               </a-tag>
             </a-descriptions-item>
           </a-descriptions>
@@ -29,7 +29,7 @@
 
         <!-- 新增节点完成进度组件 -->
         <a-card class="progress-card" v-if="!loading && templateContent.nodes && templateContent.nodes.length > 0">
-          <div class="progress-title">节点完成进度</div>
+          <div class="progress-title">{{ $t('filingEdit.nodeProgress') }}</div>
           <a-steps class="node-progress" :current="completedSteps">
             <a-step 
               v-for="node in templateContent.nodes" 
@@ -65,7 +65,7 @@
                       <a-form-item
                         :label="field.label"
                         :name="field.id"
-                        :rules="[{ required: field.required, message: `请${field.type === 'select' ? '选择' : '输入'}${field.label}` }]"
+                        :rules="[{ required: field.required, message: $t('filingEdit.fieldRequired', { action: field.type === 'select' ? $t('filingEdit.select') : $t('filingEdit.input'), field: field.label }) }]"
                       >
                         <template #extra>{{ field.guide }}</template>
                         
@@ -92,10 +92,34 @@
                           </div>
                         </template>
                         
+                        <template v-else-if="field.type === 'checkbox'">
+                          <a-checkbox-group v-model:value="nodeForms[node.id][field.id]">
+                            <a-checkbox 
+                              v-for="option in getSelectOptions(field)" 
+                              :key="getOptionKey(option)" 
+                              :value="getOptionValue(option)"
+                            >
+                              {{ getOptionLabel(option) }}
+                            </a-checkbox>
+                          </a-checkbox-group>
+                        </template>
+
+                        <template v-else-if="field.type === 'radio'">
+                          <a-radio-group v-model:value="nodeForms[node.id][field.id]">
+                            <a-radio 
+                              v-for="option in getSelectOptions(field)" 
+                              :key="getOptionKey(option)" 
+                              :value="getOptionValue(option)"
+                            >
+                              {{ getOptionLabel(option) }}
+                            </a-radio>
+                          </a-radio-group>
+                        </template>
+                        
                         <template v-else-if="field.type === 'input'">
                           <a-input
                             v-model:value="nodeForms[node.id][field.id]"
-                            :placeholder="field.example || `请输入${field.label}`"
+                            :placeholder="field.example || $t('filingEdit.pleaseInput', { field: field.label })"
                             v-bind="field.props"
                           />
                         </template>
@@ -103,15 +127,15 @@
                         <template v-else-if="field.type === 'select'">
                           <a-select
                             v-model:value="nodeForms[node.id][field.id]"
-                            :placeholder="field.example || `请选择${field.label}`"
+                            :placeholder="field.example || $t('filingEdit.pleaseSelect', { field: field.label })"
                             v-bind="field.props"
                           >
                             <a-select-option 
-                              v-for="option in field.props && field.props.options ? field.props.options : []" 
-                              :key="option.value" 
-                              :value="option.value"
+                              v-for="option in getSelectOptions(field)" 
+                              :key="getOptionKey(option)" 
+                              :value="getOptionValue(option)"
                             >
-                              {{ option.label }}
+                              {{ getOptionLabel(option) }}
                             </a-select-option>
                           </a-select>
                         </template>
@@ -119,7 +143,7 @@
                         <template v-else-if="field.type === 'date'">
                           <a-date-picker
                             v-model:value="nodeForms[node.id][field.id]"
-                            :placeholder="field.example || `请选择${field.label}`"
+                            :placeholder="field.example || $t('filingEdit.pleaseSelect', { field: field.label })"
                             style="width: 100%"
                             v-bind="field.props"
                           />
@@ -128,7 +152,7 @@
                         <template v-else-if="field.type === 'textarea'">
                           <a-textarea
                             v-model:value="nodeForms[node.id][field.id]"
-                            :placeholder="field.example || `请输入${field.label}`"
+                            :placeholder="field.example || $t('filingEdit.pleaseInput', { field: field.label })"
                             :rows="4"
                             v-bind="field.props"
                           />
@@ -137,7 +161,7 @@
                         <template v-else>
                           <a-input
                             v-model:value="nodeForms[node.id][field.id]"
-                            :placeholder="field.example || `请输入${field.label}`"
+                            :placeholder="field.example || $t('filingEdit.pleaseInput', { field: field.label })"
                             v-bind="field.props"
                           />
                         </template>
@@ -151,9 +175,9 @@
         </a-card>
 
         <div v-if="!loading && (!templateContent.nodes || templateContent.nodes.length === 0)" class="empty-content">
-          <a-empty description="暂无模板内容数据">
+          <a-empty :description="$t('filingEdit.noTemplateContent')">
             <template #description>
-              <p>抱歉，当前没有可用的模板内容，请联系管理员。</p>
+              <p>{{ $t('filingEdit.noTemplateContentDesc') }}</p>
             </template>
           </a-empty>
         </div>
@@ -162,12 +186,12 @@
           <a-space size="middle">
             <a-button type="primary" @click="handleSave" :loading="savingInProgress" :disabled="submittingInProgress">
               <template #icon><SaveOutlined /></template>
-              保存
+              {{ $t('common.save') }}
             </a-button>
             <a-button type="primary" @click="handleSubmit" :loading="submittingInProgress" 
                       :disabled="savingInProgress || !canSubmit">
               <template #icon><CheckOutlined /></template>
-              提交审核
+              {{ $t('filingEdit.submitForReview') }}
             </a-button>
           </a-space>
         </div>
@@ -176,7 +200,7 @@
           <a-space size="middle">
             <a-button @click="goBack">
               <template #icon><ArrowLeftOutlined /></template>
-              返回
+              {{ $t('common.back') }}
             </a-button>
           </a-space>
         </div>
@@ -192,12 +216,14 @@ ArrowLeftOutlined,
 CheckOutlined,
 SaveOutlined
 } from '@ant-design/icons-vue';
-import { message, Modal } from 'ant-design-vue';
+import { message } from 'ant-design-vue';
 import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const filingId = route.query.id;
 const isReadonly = computed(() => route.query.readonly === 'true');
 const submittingInProgress = ref(false);
@@ -251,17 +277,7 @@ const completedSteps = computed(() => {
 
 // 获取状态文本
 const getStatusText = (status) => {
-  const statusMap = {
-    0: '待审核',
-    1: '申请通过',
-    2: '拒绝申请',
-    3: '待填写',
-    4: '填写中',
-    5: '审核中',
-    6: '审核通过',
-    7: '退回'
-  };
-  return statusMap[Number(status)] || '未知';
+  return t(`status.${Number(status)}`);
 };
 
 // 获取状态颜色
@@ -292,6 +308,97 @@ const handleStepClick = (nodeId) => {
 // 返回上一页
 const goBack = () => {
   router.push('/user/filing-center');
+};
+
+// 保存模板数据
+const saveTemplateData = async () => {
+  try {
+    // 构建保存数据 - 确保不会双重编码JSON
+    const contentToSave = {
+      nodes: templateContent.nodes,
+      formData: nodeForms
+    };
+
+    const response = await userTemplateAPI.saveTemplateContent(filingId, contentToSave);
+
+    if (response && response.code === 200) {
+      message.success(t('filingEdit.saveSuccess'));
+      
+      // 刷新模板信息，获取最新状态
+      await fetchFilingInfo();
+    } else {
+      throw new Error(response?.message || t('filingEdit.saveFailed'));
+    }
+  } catch (error) {
+    console.error('保存失败:', error);
+    if (error.response) {
+      console.error('错误状态码:', error.response.status);
+      console.error('错误详情:', error.response.data);
+    }
+    message.error(t('filingEdit.saveFailed') + ': ' + (error.message || t('filingEdit.unknownError')));
+  }
+};
+
+// 处理保存按钮点击
+const handleSave = async () => {
+  if (savingInProgress.value || submittingInProgress.value) {
+    message.info(t('filingEdit.operationInProgress'));
+    return;
+  }
+
+  savingInProgress.value = true;
+  try {
+    await saveTemplateData();
+  } finally {
+    savingInProgress.value = false;
+  }
+};
+
+// 处理提交审核按钮点击
+const handleSubmit = async () => {
+  if (savingInProgress.value || submittingInProgress.value) {
+    message.info(t('filingEdit.operationInProgress'));
+    return;
+  }
+
+  // 检查当前状态是否可以提交
+  if (templateInfo.status !== 3 && templateInfo.status !== 4) {
+    message.error(t('filingEdit.cannotSubmit'));
+    return;
+  }
+
+  // 验证必填字段
+  const hasIncompleteNodes = templateContent.nodes.some(node => {
+    const requiredFields = node.fields.filter(field => field.required);
+    return requiredFields.some(field => {
+      const value = nodeForms[node.id]?.[field.id];
+      return !value || (Array.isArray(value) && value.length === 0) || (typeof value === 'string' && value.trim() === '');
+    });
+  });
+
+  if (hasIncompleteNodes) {
+    const incompleteNode = templateContent.nodes.find(node => {
+      const requiredFields = node.fields.filter(field => field.required);
+      return requiredFields.some(field => {
+        const value = nodeForms[node.id]?.[field.id];
+        return !value || (Array.isArray(value) && value.length === 0) || (typeof value === 'string' && value.trim() === '');
+      });
+    });
+
+    if (incompleteNode) {
+      message.error(t('filingEdit.completeMissingFields', { nodeName: incompleteNode.name }));
+      // 自动切换到有问题的节点
+      activeTabKey.value = incompleteNode.id;
+    }
+    return;
+  }
+
+  submittingInProgress.value = true;
+  try {
+    await submitForReview();
+  } finally {
+    submittingInProgress.value = false;
+  }
 };
 
 // 验证单个节点表单
@@ -342,7 +449,8 @@ const validateForms = async () => {
     // 如果有错误，自动切换到第一个出错的节点
     if (hasError && firstErrorNodeId) {
       activeTabKey.value = firstErrorNodeId;
-      message.warning(`请完成"${templateContent.nodes.find(node => node.id === firstErrorNodeId)?.name || '当前'}"节点的必填项`);
+      const nodeName = templateContent.nodes.find(node => node.id === firstErrorNodeId)?.name || t('filingEdit.currentNode');
+      message.warning(t('filingEdit.completeMissingFields', { nodeName }));
       return false;
     }
     
@@ -418,63 +526,41 @@ watch(activeTabKey, (newTabKey) => {
   }
 });
 
-// 获取模板详情信息
-const fetchTemplateInfo = async () => {
+// 获取备案信息
+const fetchFilingInfo = async () => {
   if (!filingId) {
-    message.error('备案ID不能为空');
-    router.push('/user/filing-center');
+    message.error(t('filingEdit.filingIdRequired'));
+    router.push("/user/filing-center");
     return;
   }
 
-  loading.value = true;
   try {
-    // 获取用户模板关系信息
+    loading.value = true;
+    
     const response = await userTemplateAPI.getAppliedTemplateList({
       pageSize: 1,
       pageNum: 1,
       id: filingId
     });
 
-    console.log('获取模板详情响应:', JSON.stringify(response));
-    
-    // 检查响应格式，确保response.code === 200
     if (!response || response.code !== 200) {
       console.error('API返回错误状态:', response);
-      message.error('获取备案信息失败: ' + (response?.message || 'API返回错误状态'));
-      router.push('/user/filing-center');
+      message.error(t('filingEdit.getFilingInfoFailed') + (response?.message || t('filingEdit.apiError')));
+      router.push("/user/filing-center");
       return;
     }
     
-    // 检查响应格式，支持多种可能的分页结构
     let templateData = null;
     
-    if (response.data) {
-      // 检查是否使用Spring Data分页结构 (content/totalElements)
-      if (response.data.content && Array.isArray(response.data.content) && response.data.content.length > 0) {
-        templateData = response.data.content[0];
-        console.log('使用Spring Data分页格式获取到模板数据');
-      } 
-      // 检查是否使用通用分页结构 (records/total)
-      else if (response.data.records && Array.isArray(response.data.records) && response.data.records.length > 0) {
-        templateData = response.data.records[0];
-        console.log('使用通用分页格式获取到模板数据');
-      }
-      // 可能是单个对象直接返回
-      else if (typeof response.data === 'object' && response.data.id) {
-        templateData = response.data;
-        console.log('获取到单个模板对象');
-      }
-      // 检查是否是Page对象但没有数据
-      else if (response.data.content && Array.isArray(response.data.content) && response.data.content.length === 0) {
-        console.warn('分页查询返回空结果');
-        message.error('未找到备案信息，可能已被删除或您无权访问');
-        router.push('/user/filing-center');
-        return;
-      }
+    if (response.data?.content && Array.isArray(response.data.content) && response.data.content.length > 0) {
+      templateData = response.data.content[0];
+    } else if (response.data?.records && Array.isArray(response.data.records) && response.data.records.length > 0) {
+      templateData = response.data.records[0];
+    } else if (typeof response.data === 'object' && response.data.id) {
+      templateData = response.data;
     }
     
     if (templateData && templateData.id) {
-      console.log('获取到模板数据:', JSON.stringify(templateData));
       Object.assign(templateInfo, templateData);
       
       // 获取模板内容
@@ -484,13 +570,13 @@ const fetchTemplateInfo = async () => {
       console.error('响应数据详情:', {
         hasData: !!response.data,
         dataType: typeof response.data,
-        hasContent: !!(response.data && response.data.content),
-        contentLength: response.data && response.data.content ? response.data.content.length : 'N/A',
-        hasRecords: !!(response.data && response.data.records),
-        recordsLength: response.data && response.data.records ? response.data.records.length : 'N/A'
+        hasContent: !!(response.data?.content),
+        hasRecords: !!(response.data?.records),
+        contentLength: response.data?.content?.length,
+        recordsLength: response.data?.records?.length
       });
-      message.error('未找到备案信息');
-      router.push('/user/filing-center');
+      message.error(t('filingEdit.filingNotFound'));
+      router.push("/user/filing-center");
     }
   } catch (error) {
     console.error('获取备案信息失败:', error);
@@ -498,8 +584,8 @@ const fetchTemplateInfo = async () => {
       console.error('错误状态码:', error.response.status);
       console.error('错误详情:', error.response.data);
     }
-    message.error('获取备案信息失败: ' + (error.message || '未知错误'));
-    router.push('/user/filing-center');
+    message.error(t('filingEdit.getFilingInfoFailed') + ": " + (error.message || t('filingEdit.unknownError')));
+    router.push("/user/filing-center");
   } finally {
     loading.value = false;
   }
@@ -507,359 +593,303 @@ const fetchTemplateInfo = async () => {
 
 // 获取模板内容
 const fetchTemplateContent = async () => {
+  if (!filingId) {
+    console.warn('没有filingId，无法获取模板内容');
+    return;
+  }
+
   try {
-    console.log('开始获取模板内容: filingId =', filingId);
-    
-    // 获取用户模板内容
     const response = await userTemplateAPI.getTemplateContent(filingId);
-    console.log('获取模板内容响应:', JSON.stringify(response));
-    
-    // 检查响应格式
+
     if (!response || response.code !== 200) {
       console.error('模板内容API返回错误:', response);
-      message.error('获取模板内容失败: ' + (response?.message || '未知错误'));
+      message.warning(t('filingEdit.getTemplateContentFailed'));
       return;
     }
+
+    // 处理API响应的模板内容
+    let contentData = null;
     
-    if (response.data !== undefined) {
-      try {
-        // 打印接收到的原始数据以便调试
-        console.log('接收到的模板内容数据类型:', typeof response.data);
-        console.log('接收到的模板内容数据:', response.data);
-        
-        let contentData;
-        
-        // 检查响应数据是否已经是对象
+    try {
+      if (response.data !== undefined) {
         if (typeof response.data === 'object' && response.data !== null) {
           contentData = response.data;
-          console.log('响应数据是对象类型，直接使用');
         } else {
-          // 检查响应数据是否可能是JSON字符串
           const dataStr = String(response.data).trim();
-          console.log('响应数据是字符串类型，尝试解析为JSON');
-          
-          // 尝试判断数据格式
           if (dataStr.startsWith('{') && dataStr.endsWith('}')) {
-            // 看起来是JSON字符串，尝试解析
-            try {
             contentData = JSON.parse(dataStr);
-              console.log('成功解析JSON字符串');
-            } catch (parseError) {
-              console.error('JSON解析失败:', parseError);
-              console.log('解析失败，判断为空内容，尝试从模板定义获取结构');
-              contentData = null; // 设置为null以触发从模板定义获取结构
-            }
           } else if (dataStr === "" || dataStr === "null" || dataStr === "{}") {
-            // 空内容，使用默认结构
-            console.log('模板内容为空，尝试从模板定义获取结构');
-            contentData = null; // 设置为null以触发从模板定义获取结构
+            contentData = null;
           } else {
-            // 未知格式，无法解析，返回默认结构
             console.error('无法识别的数据格式:', dataStr);
-            contentData = null; // 设置为null以触发从模板定义获取结构
+            contentData = null;
           }
         }
-        
-        // 如果内容为空或无效，尝试从模板定义中获取结构
-        if (!contentData || !contentData.nodes || !Array.isArray(contentData.nodes) || contentData.nodes.length === 0) {
-          console.log('用户内容为空或无效，尝试从模板定义获取结构');
-          
-          if (templateInfo.templateId) {
-            try {
-              console.log('获取模板定义: templateId =', templateInfo.templateId);
-              
-              // 获取模板定义
-              const templateResponse = await userTemplateAPI.getTemplateDefinition(templateInfo.templateId);
-              console.log('模板定义响应:', JSON.stringify(templateResponse));
-              
-              if (templateResponse && templateResponse.code === 200 && templateResponse.data) {
-                const templateData = templateResponse.data;
-                
-                if (templateData.templateContent) {
-                  try {
-                    // 解析模板内容
-                    let templateContentData;
-                    if (typeof templateData.templateContent === 'string') {
-                      templateContentData = JSON.parse(templateData.templateContent);
-                    } else {
-                      templateContentData = templateData.templateContent;
-                    }
-                    
-                    console.log('成功解析模板定义内容:', templateContentData);
-                    
-                    // 检查是否是sections格式，如果是则转换为nodes格式
-                    if (templateContentData.sections && Array.isArray(templateContentData.sections)) {
-                      console.log('检测到sections格式，转换为nodes格式');
-                      
-                      // 将sections转换为nodes格式
-                      const nodes = templateContentData.sections.map((section, index) => {
-                        const nodeId = `node_${index + 1}`;
-                        const fields = [];
-                        
-                        // 处理section中的fields
-                        if (section.fields && Array.isArray(section.fields)) {
-                          section.fields.forEach((fieldGroup, fieldIndex) => {
-                            if (fieldGroup.row && Array.isArray(fieldGroup.row)) {
-                              fieldGroup.row.forEach((field, rowIndex) => {
-                                const fieldId = `${nodeId}_field_${fieldIndex}_${rowIndex}`;
-                                fields.push({
-                                  id: fieldId,
-                                  label: field.label || `字段${fields.length + 1}`,
-                                  type: field.type === 'text' ? 'input' : field.type || 'input',
-                                  required: field.required || false,
-                                  example: field.example || `请输入${field.label || '内容'}`,
-                                  guide: field.guide || '',
-                                  props: field.props || {}
-                                });
-                              });
+      }
+      
+      // 如果用户内容为空或无效，尝试从模板定义获取结构
+      if (!contentData || !contentData.nodes || !Array.isArray(contentData.nodes) || contentData.nodes.length === 0) {
+        if (templateInfo.templateId) {
+          try {
+            const templateResponse = await userTemplateAPI.getTemplateDefinition(templateInfo.templateId);
+
+            if (templateResponse && templateResponse.code === 200 && templateResponse.data?.templateContent) {
+              let templateContentData;
+              if (typeof templateResponse.data.templateContent === 'string') {
+                templateContentData = JSON.parse(templateResponse.data.templateContent);
+              } else {
+                templateContentData = templateResponse.data.templateContent;
+              }
+
+              // 转换sections格式为nodes格式（确保与后端一致）
+              if (templateContentData.sections && Array.isArray(templateContentData.sections)) {
+                const nodes = templateContentData.sections.map((section, sectionIndex) => {
+                  const nodeId = `node_${sectionIndex + 1}`;
+                  const fields = [];
+
+                  if (section.fields && Array.isArray(section.fields)) {
+                    section.fields.forEach((fieldGroup, fieldIndex) => {
+                      if (fieldGroup.row && Array.isArray(fieldGroup.row)) {
+                        fieldGroup.row.forEach((field, rowIndex) => {
+                          const fieldId = `${nodeId}_field_${fieldIndex}_${rowIndex}`;
+                          const convertedType = convertFieldType(field.type);
+                          const normalizedOptions = normalizeOptions(field.options || field.props?.options || []);
+                          
+                          fields.push({
+                            id: fieldId,
+                            label: field.label || t('filingEdit.defaultFieldName', { index: fields.length + 1 }),
+                            type: convertedType,
+                            required: field.required || false,
+                            example: field.example || field.description || t('filingEdit.pleaseInputContent'),
+                            guide: field.guide || field.description || '',
+                            props: {
+                              options: normalizedOptions
                             }
                           });
-                        }
-                        
-                        return {
-                          id: nodeId,
-                          name: section.name || `节点${index + 1}`,
-                          fields: fields
-                        };
-                      });
-                      
-                      contentData = {
-                        nodes: nodes,
-                        formData: {} // 空的表单数据
-                      };
-                      
-                      console.log('成功转换sections为nodes格式:', contentData);
-                      message.success('已从模板定义加载表单结构');
-                    } else if (templateContentData.nodes && Array.isArray(templateContentData.nodes)) {
-                      // 已经是nodes格式，直接使用
-                      console.log('检测到nodes格式，直接使用');
-                      contentData = {
-                        nodes: templateContentData.nodes || [],
-                        formData: {} // 空的表单数据
-                      };
-                      message.success('已从模板定义加载表单结构');
-                    } else {
-                      console.warn('模板定义格式不识别:', templateContentData);
-                      message.warning('模板定义格式不识别，将使用空模板');
-                      contentData = { nodes: [], formData: {} };
-                    }
-                  } catch (parseError) {
-                    console.error('解析模板定义失败:', parseError);
-                    message.warning('模板定义格式错误，将使用空模板');
-                    contentData = { nodes: [], formData: {} };
+                        });
+                      }
+                    });
                   }
-                } else {
-                  console.warn('模板定义中没有templateContent字段');
-                  message.warning('模板定义不完整，请联系管理员');
-                  contentData = { nodes: [], formData: {} };
-                }
+
+                  return {
+                    id: nodeId,
+                    name: section.name || t('filingEdit.defaultNodeName', { index: sectionIndex + 1 }),
+                    fields: fields
+                  };
+                });
+
+                contentData = {
+                  nodes: nodes,
+                  formData: {} // 空的表单数据，用户尚未填写
+                };
+              } else if (templateContentData.nodes && Array.isArray(templateContentData.nodes)) {
+                // 已经是nodes格式，但需要规范化options
+                const normalizedNodes = templateContentData.nodes.map(node => ({
+                  ...node,
+                  fields: (node.fields || []).map(field => ({
+                    ...field,
+                    props: {
+                      ...field.props,
+                      options: normalizeOptions(field.props?.options || [])
+                    }
+                  }))
+                }));
+                
+                contentData = {
+                  nodes: normalizedNodes,
+                  formData: {} // 空的表单数据
+                };
               } else {
-                console.error('获取模板定义失败:', templateResponse);
-                message.warning('无法获取模板定义，将使用空模板');
+                console.warn('模板定义格式不识别:', templateContentData);
                 contentData = { nodes: [], formData: {} };
               }
-            } catch (templateError) {
-              console.error('获取模板定义异常:', templateError);
-              message.warning('获取模板定义失败，将使用空模板');
+            } else {
+              console.error('获取模板定义失败:', templateResponse);
               contentData = { nodes: [], formData: {} };
             }
-          } else {
-            console.warn('没有找到templateId，无法获取模板定义');
-            message.warning('模板信息不完整，请联系管理员');
+          } catch (templateError) {
+            console.error('获取模板定义异常:', templateError);
             contentData = { nodes: [], formData: {} };
           }
-        }
-        
-        // 更新模板内容
-        if (contentData && contentData.nodes && Array.isArray(contentData.nodes)) {
-          console.log('更新模板节点:', contentData.nodes.length, '个节点');
-          templateContent.nodes = contentData.nodes;
-          
-          // 初始化表单
-          initNodeForms();
-          
-          // 如果有已保存的表单数据
-          if (contentData.formData) {
-            console.log('更新表单数据');
-            Object.keys(contentData.formData).forEach(nodeId => {
-              if (nodeForms[nodeId]) {
-                Object.assign(nodeForms[nodeId], contentData.formData[nodeId]);
-              }
-            });
-          }
-          
-          // 检查所有节点的完成状态
-          setTimeout(() => {
-            checkAllNodeStatus();
-          }, 500);
         } else {
-          console.error('最终内容数据无效:', contentData);
-          templateContent.nodes = [];
-          message.error('模板内容格式错误，请联系管理员');
+          console.warn('没有找到templateId，无法获取模板定义');
+          contentData = { nodes: [], formData: {} };
         }
-      } catch (parseError) {
-        console.error('解析模板内容失败:', parseError);
-        console.error('原始数据:', response.data);
-        message.error('模板内容格式不正确: ' + parseError.message);
+      }
+
+      // 更新模板内容和表单数据
+      if (contentData && contentData.nodes && Array.isArray(contentData.nodes)) {
+        templateContent.nodes = contentData.nodes;
+
+        // 初始化表单数据
+        templateContent.nodes.forEach(node => {
+          nodeForms[node.id] = {};
+
+          // 如果有已保存的表单数据，则填充
+          if (contentData.formData && contentData.formData[node.id]) {
+            Object.assign(nodeForms[node.id], contentData.formData[node.id]);
+          }
+        });
+
+        // 设置第一个节点为活动标签
+        if (templateContent.nodes.length > 0) {
+          activeTabKey.value = templateContent.nodes[0].id;
+        }
+
+        // 初始化表单数据结构
+        initNodeForms();
+      } else {
+        console.error('最终内容数据无效:', contentData);
         templateContent.nodes = [];
       }
-    } else {
-      console.warn('API响应中没有data字段:', response);
-      message.warning('未获取到模板内容数据');
+    } catch (parseError) {
+      console.error('解析模板内容失败:', parseError);
+      console.error('原始数据:', response.data);
       templateContent.nodes = [];
     }
   } catch (error) {
     console.error('获取模板内容失败:', error);
-    message.error('获取模板内容失败: ' + (error.message || '未知错误'));
+    message.error(t('filingEdit.getTemplateContentFailed') + ': ' + (error.message || t('filingEdit.unknownError')));
     templateContent.nodes = [];
   }
 };
 
-// 保存草稿
-const handleSave = async () => {
-  if (isReadonly.value || savingInProgress.value || submittingInProgress.value) return;
+// 字段类型转换函数
+const convertFieldType = (type) => {
+  const typeMap = {
+    'text': 'input',
+    'textarea': 'textarea', 
+    'richtext': 'richtext',
+    'select': 'select',
+    'date': 'date',
+    'checkbox': 'checkbox',
+    'radio': 'radio'
+  };
+  return typeMap[type] || 'input';
+};
+
+// 选项规范化函数
+const normalizeOptions = (options) => {
+  if (!options) return [];
   
-  savingInProgress.value = true;
+  if (Array.isArray(options)) {
+    return options.map(option => {
+      if (typeof option === 'string') {
+        return { value: option, label: option };
+      } else if (typeof option === 'object' && option !== null) {
+        return { 
+          value: option.value !== undefined ? option.value : option.key || option.label,
+          label: option.label !== undefined ? option.label : option.value || option.key
+        };
+      }
+      return null;
+    }).filter(option => option != null);
+  }
+  
+  return [];
+};
+
+// 安全获取选择器选项
+const getSelectOptions = (field) => {
+  if (!field || !field.props) return [];
+  
+  const options = field.props.options;
+  if (!options) return [];
+  
+  // 如果是数组
+  if (Array.isArray(options)) {
+    return options.filter(option => option != null); // 过滤掉null和undefined
+  }
+  
+  return [];
+};
+
+// 安全获取选项的key
+const getOptionKey = (option) => {
+  if (typeof option === 'string') {
+    return option;
+  }
+  if (option && typeof option === 'object') {
+    return option.value !== undefined ? option.value : option.key || option.label || String(option);
+  }
+  return String(option);
+};
+
+// 安全获取选项的value
+const getOptionValue = (option) => {
+  if (typeof option === 'string') {
+    return option;
+  }
+  if (option && typeof option === 'object') {
+    return option.value !== undefined ? option.value : option.key || option.label;
+  }
+  return option;
+};
+
+// 安全获取选项的label
+const getOptionLabel = (option) => {
+  if (typeof option === 'string') {
+    return option;
+  }
+  if (option && typeof option === 'object') {
+    return option.label !== undefined ? option.label : option.value || option.key || String(option);
+  }
+  return String(option);
+};
+
+// 提交审核
+const submitForReview = async () => {
   try {
-    // 显示加载消息
-    const loadingMessage = message.loading('正在保存数据...', 0);
-    
-    // 检查所有节点状态
-    await checkAllNodeStatus();
-    
-    // 构建保存的数据
-    const contentData = {
+    // 先保存当前数据 - 确保不会双重编码JSON
+    const contentToSave = {
       nodes: templateContent.nodes,
-      formData: { ...nodeForms }
+      formData: nodeForms
     };
+
+    // 保存数据
+    const saveResponse = await userTemplateAPI.saveTemplateContent(filingId, contentToSave);
     
-    // 将数据转换为JSON字符串
-    const content = JSON.stringify(contentData);
-    
-    console.log('开始保存模板数据...');
-    console.log('节点数量:', templateContent.nodes.length);
-    console.log('表单字段:', Object.keys(nodeForms));
-    console.log('发送的数据长度:', content.length);
-    
-    // 仅保存表单内容，不尝试更新模板状态
-    const saveResponse = await userTemplateAPI.saveTemplateContent(filingId, content);
-    
-    // 关闭加载消息
-    loadingMessage();
-    
-    if (!saveResponse.code || saveResponse.code !== 200) {
-      throw new Error(saveResponse.message || '保存失败');
+    if (!saveResponse || saveResponse.code !== 200) {
+      throw new Error(saveResponse?.message || t('filingEdit.saveFailed'));
     }
-    
-    // 刷新模板信息，获取最新状态
-    await fetchTemplateInfo();
+
+    // 提交审核
+    try {
+      const reviewResponse = await userTemplateAPI.updateTemplateStatus(
+        filingId,
+        5, // 状态：审核中
+        t('filingEdit.userSubmitReview')
+      );
+
+      if (reviewResponse && reviewResponse.code === 200) {
+        message.success(t('filingEdit.submitSuccess'));
+        
+        // 刷新页面状态
+        await fetchFilingInfo();
+      } else {
+        throw new Error(reviewResponse?.message || t('filingEdit.submitFailed'));
+      }
+    } catch (reviewError) {
+      console.error('提交审核失败:', reviewError);
+      if (reviewError.response) {
+        console.error('错误状态码:', reviewError.response.status);
+        console.error('错误详情:', reviewError.response.data);
+      }
+      throw reviewError;
+    }
   } catch (error) {
-    console.error('保存失败:', error);
+    console.error('提交失败:', error);
     if (error.response) {
       console.error('错误状态码:', error.response.status);
       console.error('错误详情:', error.response.data);
     }
-    message.error('保存失败: ' + (error.message || '未知错误'));
-  } finally {
-    savingInProgress.value = false;
+    message.error(t('filingEdit.submitFailed') + ': ' + (error.message || t('filingEdit.unknownError')));
   }
-};
-
-// 提交审核
-const handleSubmit = async () => {
-  if (isReadonly.value || submittingInProgress.value || savingInProgress.value || !canSubmit.value) return;
-  
-  // 验证所有表单
-  const valid = await validateForms();
-  if (!valid) {
-    message.error('请填写所有必填项');
-    return;
-  }
-  
-  // 弹出确认对话框
-  Modal.confirm({
-    title: '提交确认',
-    content: '提交后将无法再次编辑，确定要提交审核吗？',
-    okText: '确认提交',
-    cancelText: '暂不提交',
-    onOk: async () => {
-      submittingInProgress.value = true;
-      try {
-        // 显示加载消息
-        const loadingMessage = message.loading('正在保存备案数据...', 0);
-        
-        // 先保存表单数据
-        const contentData = {
-          nodes: templateContent.nodes,
-          formData: { ...nodeForms }
-        };
-        
-        // 将数据转换为JSON字符串
-        const content = JSON.stringify(contentData);
-        
-        console.log('提交前保存模板数据...');
-        console.log('节点数量:', templateContent.nodes.length);
-        console.log('表单字段:', Object.keys(nodeForms));
-        console.log('发送的数据长度:', content.length);
-        
-        // 调用API保存数据
-        const saveResponse = await userTemplateAPI.saveTemplateContent(filingId, content);
-        
-        // 关闭加载消息
-        loadingMessage();
-        
-        if (!saveResponse.code || saveResponse.code !== 200) {
-          throw new Error(saveResponse.message || '保存数据失败');
-        }
-        
-        // 显示新的加载消息
-        const submitMessage = message.loading('正在提交审核...', 0);
-        
-        try {
-          // 使用submitForReview API提交审核
-          // 这个API会自动将状态修改为"审核中"(5)
-          const reviewResponse = await userTemplateAPI.submitForReview(filingId);
-          
-          if (!reviewResponse.code || reviewResponse.code !== 200) {
-            throw new Error(reviewResponse.message || '提交审核失败');
-          }
-          
-          // 关闭加载消息
-          submitMessage();
-          
-          // 显示成功消息
-          message.success('备案信息已成功提交，请等待管理员审核');
-          
-          // 跳转回备案中心
-          setTimeout(() => {
-            router.push('/user/filing-center');
-          }, 1500);
-        } catch (reviewError) {
-          submitMessage();
-          console.error('提交审核失败:', reviewError);
-          if (reviewError.response) {
-            console.error('错误状态码:', reviewError.response.status);
-            console.error('错误详情:', reviewError.response.data);
-          }
-          message.error('提交审核失败: ' + (reviewError.message || '未知错误'));
-        }
-      } catch (error) {
-        console.error('提交失败:', error);
-        if (error.response) {
-          console.error('错误状态码:', error.response.status);
-          console.error('错误详情:', error.response.data);
-        }
-        message.error('提交失败: ' + (error.message || '未知错误'));
-      } finally {
-        submittingInProgress.value = false;
-      }
-    }
-  });
 };
 
 // 组件挂载时获取数据
 onMounted(() => {
-  fetchTemplateInfo();
+  fetchFilingInfo();
 });
 </script>
 

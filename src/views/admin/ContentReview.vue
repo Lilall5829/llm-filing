@@ -3,17 +3,17 @@
     <div class="content-review">
       <div class="header-container">
         <div class="title-section">
-          <h2 class="page-title">内容审核</h2>
+          <h2 class="page-title">{{ $t("contentReview.title") }}</h2>
           <div class="user-info">
-            <a-tag color="blue">用户：{{ recordInfo.userName }}</a-tag>
-            <a-tag color="green">模板：{{ recordInfo.templateName }}</a-tag>
+            <a-tag color="blue">{{ $t("contentReview.user") }}：{{ recordInfo.userName }}</a-tag>
+            <a-tag color="green">{{ $t("contentReview.template") }}：{{ recordInfo.templateName }}</a-tag>
           </div>
         </div>
         <div class="actions-section">
           <a-space>
             <a-button @click="goBack">
               <template #icon><ArrowLeftOutlined /></template>
-              返回列表
+              {{ $t("contentReview.backToList") }}
             </a-button>
           </a-space>
         </div>
@@ -21,27 +21,27 @@
 
       <a-spin :spinning="loading">
         <a-card class="info-card">
-          <a-descriptions title="申请信息" bordered :column="{ xxl: 3, xl: 3, lg: 3, md: 2, sm: 1, xs: 1 }">
-            <a-descriptions-item label="申请ID">{{ recordInfo.id || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="模板编号">{{ recordInfo.templateCode || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="模板名称">{{ recordInfo.templateName || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="申请用户">{{ recordInfo.userName || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="申请时间">{{ recordInfo.createTime || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="状态">
+          <a-descriptions :title="$t('contentReview.applicationInfo')" bordered :column="{ xxl: 3, xl: 3, lg: 3, md: 2, sm: 1, xs: 1 }">
+            <a-descriptions-item :label="$t('contentReview.applicationId')">{{ recordInfo.id || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('contentReview.templateCode')">{{ recordInfo.templateCode || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('contentReview.templateName')">{{ recordInfo.templateName || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('contentReview.applicantUser')">{{ recordInfo.userName || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('contentReview.applicationTime')">{{ recordInfo.createTime || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('contentReview.status')">
               <a-tag :color="getStatusColor(recordInfo.status)">
-                {{ recordInfo.statusDesc || getStatusText(recordInfo.status) }}
+                {{ $t(`status.${recordInfo.status}`) }}
               </a-tag>
             </a-descriptions-item>
-            <a-descriptions-item label="最后更新">{{ recordInfo.updateTime || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="备注" :span="2">{{ recordInfo.remarks || '无' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('contentReview.lastUpdate')">{{ recordInfo.updateTime || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('contentReview.remarks')" :span="2">{{ formatRemarkForDisplay(recordInfo.remarks) || $t('contentReview.noRemarks') }}</a-descriptions-item>
           </a-descriptions>
         </a-card>
 
         <a-card class="content-card" v-if="!loading && templateContent.nodes && templateContent.nodes.length > 0">
           <template #title>
             <div class="content-title">
-              <span>用户提交的内容</span>
-              <a-tag color="processing">共 {{ templateContent.nodes?.length || 0 }} 个节点</a-tag>
+              <span>{{ $t("contentReview.userSubmittedContent") }}</span>
+              <a-tag color="processing">{{ $t("contentReview.totalNodes", { count: templateContent.nodes?.length || 0 }) }}</a-tag>
             </div>
           </template>
           
@@ -94,10 +94,36 @@
                           </div>
                         </template>
                         
+                        <template v-else-if="field.type === 'checkbox'">
+                          <a-checkbox-group :value="nodeForms[node.id]?.[field.id] || []" disabled>
+                            <a-checkbox 
+                              v-for="option in getSelectOptions(field)" 
+                              :key="getOptionKey(option)" 
+                              :value="getOptionValue(option)"
+                              disabled
+                            >
+                              {{ getOptionLabel(option) }}
+                            </a-checkbox>
+                          </a-checkbox-group>
+                        </template>
+
+                        <template v-else-if="field.type === 'radio'">
+                          <a-radio-group :value="nodeForms[node.id]?.[field.id] || ''" disabled>
+                            <a-radio 
+                              v-for="option in getSelectOptions(field)" 
+                              :key="getOptionKey(option)" 
+                              :value="getOptionValue(option)"
+                              disabled
+                            >
+                              {{ getOptionLabel(option) }}
+                            </a-radio>
+                          </a-radio-group>
+                        </template>
+                        
                         <template v-else-if="field.type === 'input'">
                           <a-input
                             :value="nodeForms[node.id]?.[field.id] || ''"
-                            :placeholder="field.example || `请输入${field.label}`"
+                            :placeholder="field.example || $t('contentReview.pleaseInput', { field: field.label })"
                             disabled
                           />
                         </template>
@@ -105,7 +131,7 @@
                         <template v-else-if="field.type === 'select'">
                           <a-select
                             :value="nodeForms[node.id]?.[field.id] || ''"
-                            :placeholder="field.example || `请选择${field.label}`"
+                            :placeholder="field.example || $t('contentReview.pleaseSelect', { field: field.label })"
                             disabled
                           >
                             <a-select-option 
@@ -121,7 +147,7 @@
                         <template v-else-if="field.type === 'date'">
                           <a-date-picker
                             :value="nodeForms[node.id]?.[field.id]"
-                            :placeholder="field.example || `请选择${field.label}`"
+                            :placeholder="field.example || $t('contentReview.pleaseSelect', { field: field.label })"
                             style="width: 100%"
                             disabled
                           />
@@ -130,26 +156,18 @@
                         <template v-else-if="field.type === 'textarea'">
                           <a-textarea
                             :value="nodeForms[node.id]?.[field.id] || ''"
-                            :placeholder="field.example || `请输入${field.label}`"
+                            :placeholder="field.example || $t('contentReview.pleaseInput', { field: field.label })"
                             :rows="4"
-                            disabled
-                          />
-                        </template>
-                        
-                        <template v-else>
-                          <a-input
-                            :value="nodeForms[node.id]?.[field.id] || ''"
-                            :placeholder="field.example || `请输入${field.label}`"
                             disabled
                           />
                         </template>
                         
                         <!-- 显示字段值是否已填写 -->
                         <div class="field-status" v-if="nodeForms[node.id]?.[field.id]">
-                          <a-tag color="success" size="small">已填写</a-tag>
+                          <a-tag color="success" size="small">{{ $t("contentReview.filled") }}</a-tag>
                         </div>
                         <div class="field-status" v-else>
-                          <a-tag color="default" size="small">未填写</a-tag>
+                          <a-tag color="default" size="small">{{ $t("contentReview.notFilled") }}</a-tag>
                         </div>
                       </a-form-item>
                     </a-col>
@@ -161,26 +179,26 @@
         </a-card>
 
         <div v-if="!loading && (!templateContent.nodes || templateContent.nodes.length === 0)" class="empty-content">
-          <a-empty description="暂无内容数据">
+          <a-empty :description="$t('contentReview.noContentData')">
             <template #description>
-              <p>用户尚未提交任何内容。</p>
+              <p>{{ $t("contentReview.userNotSubmitted") }}</p>
             </template>
           </a-empty>
         </div>
 
         <div class="review-section" v-if="!loading && canReviewContent(recordInfo.status)">
-          <a-card title="审核操作">
+          <a-card :title="$t('contentReview.reviewAction')">
             <a-form :model="reviewForm" layout="vertical">
-              <a-form-item label="审核结果" required>
+              <a-form-item :label="$t('contentReview.reviewResult')" required>
                 <a-radio-group v-model:value="reviewForm.status">
-                  <a-radio :value="6">通过审核</a-radio>
-                  <a-radio :value="7">退回修改</a-radio>
+                  <a-radio :value="6">{{ $t("contentReview.approveReview") }}</a-radio>
+                  <a-radio :value="7">{{ $t("contentReview.returnForRevision") }}</a-radio>
                 </a-radio-group>
               </a-form-item>
-              <a-form-item label="审核意见">
+              <a-form-item :label="$t('contentReview.reviewComment')">
                 <a-textarea 
                   v-model:value="reviewForm.remarks" 
-                  placeholder="请输入审核意见（可选）"
+                  :placeholder="$t('contentReview.pleaseInputReviewComment')"
                   :rows="4"
                 />
               </a-form-item>
@@ -193,10 +211,10 @@
                     :disabled="!reviewForm.status"
                   >
                     <template #icon><CheckOutlined /></template>
-                    {{ reviewForm.status === 6 ? '通过审核' : '退回修改' }}
+                    {{ reviewForm.status === 6 ? $t("contentReview.approveReview") : $t("contentReview.returnForRevision") }}
                   </a-button>
                   <a-button @click="resetReviewForm">
-                    重置
+                    {{ $t("contentReview.reset") }}
                   </a-button>
                 </a-space>
               </a-form-item>
@@ -206,7 +224,7 @@
 
         <div class="readonly-notice" v-else-if="!loading">
           <a-alert 
-            message="提示" 
+            :message="$t('contentReview.notice')" 
             :description="getReadonlyReason(recordInfo.status)"
             type="info" 
             show-icon 
@@ -219,16 +237,19 @@
 
 <script setup>
 import { userTemplateAPI } from '@/api';
+import { formatRemarkForDisplay } from '@/utils/remarkUtils';
 import {
-  ArrowLeftOutlined,
-  CheckOutlined
+ArrowLeftOutlined,
+CheckOutlined
 } from '@ant-design/icons-vue';
 import { message, Modal } from 'ant-design-vue';
 import { onMounted, reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const recordId = route.query.id;
 
 const loading = ref(true);
@@ -265,17 +286,7 @@ const reviewForm = reactive({
 
 // 获取状态文本
 const getStatusText = (status) => {
-  const statusMap = {
-    0: '待审核',
-    1: '申请通过',
-    2: '拒绝申请',
-    3: '待填写',
-    4: '填写中',
-    5: '审核中',
-    6: '审核通过',
-    7: '退回'
-  };
-  return statusMap[Number(status)] || '未知';
+  return t(`status.${Number(status)}`);
 };
 
 // 获取状态颜色
@@ -302,14 +313,62 @@ const canReviewContent = (status) => {
 const getReadonlyReason = (status) => {
   const statusNum = Number(status);
   if (statusNum === 6) {
-    return '该申请已审核通过，无需再次审核。';
+    return t('contentReview.alreadyApproved');
   } else if (statusNum === 7) {
-    return '该申请已退回用户修改，等待用户重新提交。';
+    return t('contentReview.alreadyReturned');
   } else if (statusNum < 5) {
-    return '用户尚未提交内容审核，请等待用户提交后再进行审核。';
+    return t('contentReview.waitingForSubmission');
   } else {
-    return '当前状态不支持内容审核操作。';
+    return t('contentReview.statusNotSupported');
   }
+};
+
+// 安全获取选择器选项
+const getSelectOptions = (field) => {
+  if (!field || !field.props) return [];
+  
+  const options = field.props.options;
+  if (!options) return [];
+  
+  // 如果是数组
+  if (Array.isArray(options)) {
+    return options.filter(option => option != null); // 过滤掉null和undefined
+  }
+  
+  return [];
+};
+
+// 安全获取选项的key
+const getOptionKey = (option) => {
+  if (typeof option === 'string') {
+    return option;
+  }
+  if (option && typeof option === 'object') {
+    return option.value !== undefined ? option.value : option.key || option.label || String(option);
+  }
+  return String(option);
+};
+
+// 安全获取选项的value
+const getOptionValue = (option) => {
+  if (typeof option === 'string') {
+    return option;
+  }
+  if (option && typeof option === 'object') {
+    return option.value !== undefined ? option.value : option.key || option.label;
+  }
+  return option;
+};
+
+// 安全获取选项的label
+const getOptionLabel = (option) => {
+  if (typeof option === 'string') {
+    return option;
+  }
+  if (option && typeof option === 'object') {
+    return option.label !== undefined ? option.label : option.value || option.key || String(option);
+  }
+  return String(option);
 };
 
 // 返回上一页
@@ -326,7 +385,7 @@ const resetReviewForm = () => {
 // 获取记录详情
 const fetchRecordInfo = async () => {
   if (!recordId) {
-    message.error('记录ID不能为空');
+    message.error(t('contentReview.recordIdCannotBeEmpty'));
     goBack();
     return;
   }
@@ -339,11 +398,9 @@ const fetchRecordInfo = async () => {
       id: recordId
     });
 
-    console.log('获取记录详情响应:', JSON.stringify(response));
-    
     if (!response || response.code !== 200) {
       console.error('API返回错误状态:', response);
-      message.error('获取记录信息失败: ' + (response?.message || 'API返回错误状态'));
+      message.error(t('contentReview.failedToGetRecordInfo') + (response?.message || t('contentReview.apiReturnError')));
       goBack();
       return;
     }
@@ -358,19 +415,18 @@ const fetchRecordInfo = async () => {
     }
     
     if (recordData && recordData.id) {
-      console.log('获取到记录数据:', JSON.stringify(recordData));
       Object.assign(recordInfo, recordData);
       
       // 获取模板内容
       await fetchTemplateContent();
     } else {
       console.error('未找到记录数据:', response);
-      message.error('未找到该记录');
+      message.error(t('contentReview.recordNotFound'));
       goBack();
     }
   } catch (error) {
     console.error('获取记录信息失败:', error);
-    message.error('获取记录信息失败: ' + (error.message || '未知错误'));
+    message.error(t('contentReview.failedToGetRecordInfo') + (error.message || t('contentReview.unknownError')));
     goBack();
   } finally {
     loading.value = false;
@@ -379,116 +435,97 @@ const fetchRecordInfo = async () => {
 
 // 获取模板内容
 const fetchTemplateContent = async () => {
+  if (!recordId) {
+    console.warn('没有recordId，无法获取模板内容');
+    return;
+  }
+
   try {
-    console.log('开始获取模板内容: recordId =', recordId);
-    
-    // 获取用户模板内容
     const response = await userTemplateAPI.getTemplateContent(recordId);
-    console.log('获取模板内容响应:', JSON.stringify(response));
-    
-    if (!response || response.code !== 200) {
-      console.error('模板内容API返回错误:', response);
-      message.warning('获取模板内容失败，可能用户尚未填写内容');
-      return;
-    }
-    
-    if (response.data !== undefined) {
-      try {
-        let contentData;
-        
-        // 解析响应数据
-        if (typeof response.data === 'object' && response.data !== null) {
-          contentData = response.data;
-        } else {
-          const dataStr = String(response.data).trim();
-          if (dataStr.startsWith('{') && dataStr.endsWith('}')) {
-            contentData = JSON.parse(dataStr);
-          } else if (dataStr === "" || dataStr === "null" || dataStr === "{}") {
-            contentData = null;
-          } else {
-            contentData = null;
-          }
-        }
-        
-        // 如果用户内容为空，尝试从模板定义获取结构
-        if (!contentData || !contentData.nodes || !Array.isArray(contentData.nodes) || contentData.nodes.length === 0) {
-          console.log('用户内容为空，尝试从模板定义获取结构');
-          
-          if (recordInfo.templateId) {
-            try {
-              const templateResponse = await userTemplateAPI.getTemplateDefinition(recordInfo.templateId);
-              console.log('模板定义响应:', JSON.stringify(templateResponse));
-              
-              if (templateResponse && templateResponse.code === 200 && templateResponse.data?.templateContent) {
-                let templateContentData;
-                if (typeof templateResponse.data.templateContent === 'string') {
-                  templateContentData = JSON.parse(templateResponse.data.templateContent);
-                } else {
-                  templateContentData = templateResponse.data.templateContent;
-                }
-                
-                // 转换sections格式为nodes格式
-                if (templateContentData.sections && Array.isArray(templateContentData.sections)) {
-                  const nodes = templateContentData.sections.map((section, index) => {
-                    const nodeId = `node_${index + 1}`;
-                    const fields = [];
-                    
-                    if (section.fields && Array.isArray(section.fields)) {
-                      section.fields.forEach((fieldGroup, fieldIndex) => {
-                        if (fieldGroup.row && Array.isArray(fieldGroup.row)) {
-                          fieldGroup.row.forEach((field, rowIndex) => {
-                            const fieldId = `${nodeId}_field_${fieldIndex}_${rowIndex}`;
-                            fields.push({
-                              id: fieldId,
-                              label: field.label || `字段${fields.length + 1}`,
-                              type: field.type === 'text' ? 'input' : field.type || 'input',
-                              required: field.required || false,
-                              example: field.example || `请输入${field.label || '内容'}`,
-                              guide: field.guide || '',
-                              props: field.props || {}
-                            });
-                          });
-                        }
-                      });
-                    }
-                    
-                    return {
-                      id: nodeId,
-                      name: section.name || `节点${index + 1}`,
-                      fields: fields
-                    };
-                  });
-                  
-                  contentData = {
-                    nodes: nodes,
-                    formData: {} // 空的表单数据，用户尚未填写
-                  };
-                } else if (templateContentData.nodes && Array.isArray(templateContentData.nodes)) {
-                  contentData = {
-                    nodes: templateContentData.nodes || [],
-                    formData: {} // 空的表单数据
-                  };
-                }
-              }
-            } catch (templateError) {
-              console.error('获取模板定义异常:', templateError);
-              message.warning('无法获取模板结构，可能是模板配置有误');
-            }
-          }
-        }
-        
-        // 更新模板内容和表单数据
-        if (contentData && contentData.nodes && Array.isArray(contentData.nodes)) {
-          console.log('更新模板节点:', contentData.nodes.length, '个节点');
-          templateContent.nodes = contentData.nodes;
-          
-          // 初始化表单数据
-          templateContent.nodes.forEach(node => {
-            nodeForms[node.id] = {};
+
+    if (response && response.code === 200) {
+      // 解析用户填写的内容
+      if (response.data && typeof response.data === 'string' && response.data.trim()) {
+        try {
+          const contentData = JSON.parse(response.data);
+          if (contentData && contentData.nodes && Array.isArray(contentData.nodes)) {
+            templateContent.nodes = contentData.nodes;
             
-            // 如果有已保存的表单数据，则填充
-            if (contentData.formData && contentData.formData[node.id]) {
-              Object.assign(nodeForms[node.id], contentData.formData[node.id]);
+            // 关键修复：设置用户填写的表单数据
+            if (contentData.formData && typeof contentData.formData === 'object') {
+              // 清空现有的nodeForms
+              Object.keys(nodeForms).forEach(key => {
+                delete nodeForms[key];
+              });
+              
+              // 设置用户填写的表单数据
+              Object.assign(nodeForms, contentData.formData);
+            }
+            
+            // 设置第一个节点为活动标签
+            if (templateContent.nodes.length > 0) {
+              activeTabKey.value = templateContent.nodes[0].id;
+            }
+            
+            return;
+          }
+        } catch (parseError) {
+          console.warn('用户内容解析失败，可能未填写内容:', parseError);
+        }
+      }
+      
+      // 如果用户内容为空，尝试从模板定义获取结构
+      if (!recordInfo.templateId) {
+        console.warn('没有找到templateId，无法获取模板定义');
+        return;
+      }
+      
+      const templateResponse = await userTemplateAPI.getTemplateDefinition(recordInfo.templateId);
+      
+      if (templateResponse && templateResponse.code === 200 && templateResponse.data?.templateContent) {
+        try {
+          const templateContentData = typeof templateResponse.data.templateContent === 'string' 
+            ? JSON.parse(templateResponse.data.templateContent) 
+            : templateResponse.data.templateContent;
+          
+          let contentData = { nodes: [] };
+          
+          // 处理sections格式转nodes格式
+          if (templateContentData.sections && Array.isArray(templateContentData.sections)) {
+            contentData.nodes = templateContentData.sections.map((section, index) => ({
+              id: section.id || `node_${index}`,
+              name: section.name || `节点${index + 1}`,
+              fields: []
+            }));
+            
+            templateContentData.sections.forEach((section, sectionIndex) => {
+              if (section.fields && Array.isArray(section.fields)) {
+                section.fields.forEach((fieldGroup) => {
+                  if (fieldGroup.row && Array.isArray(fieldGroup.row)) {
+                    fieldGroup.row.forEach((field) => {
+                      contentData.nodes[sectionIndex].fields.push({
+                        id: field.id || `field_${Date.now()}_${Math.random()}`,
+                        label: field.label || '未命名字段',
+                        type: field.type || 'text',
+                        required: field.required || false,
+                        example: field.example || field.guide || '',
+                        props: field.props || {}
+                      });
+                    });
+                  }
+                });
+              }
+            });
+          } else if (templateContentData.nodes && Array.isArray(templateContentData.nodes)) {
+            contentData = templateContentData;
+          }
+          
+          templateContent.nodes = contentData.nodes || [];
+          
+          // 初始化空的表单数据（用户未填写）
+          templateContent.nodes.forEach(node => {
+            if (!nodeForms[node.id]) {
+              nodeForms[node.id] = {};
             }
           });
           
@@ -496,69 +533,69 @@ const fetchTemplateContent = async () => {
           if (templateContent.nodes.length > 0) {
             activeTabKey.value = templateContent.nodes[0].id;
           }
-        } else {
-          console.warn('无有效的模板内容数据');
-          templateContent.nodes = [];
+          
+        } catch (templateParseError) {
+          console.error('解析模板定义失败:', templateParseError);
+          message.warning(t('contentReview.unableToGetTemplateStructure'));
         }
-      } catch (parseError) {
-        console.error('解析模板内容失败:', parseError);
-        message.warning('模板内容格式错误');
-        templateContent.nodes = [];
+      } else {
+        console.error('获取模板定义异常:', templateResponse);
+        message.warning(t('contentReview.unableToGetTemplateStructure'));
       }
     } else {
-      console.warn('API响应中没有data字段:', response);
-      templateContent.nodes = [];
+      console.error('模板内容API返回错误:', response);
+      message.warning(t('contentReview.failedToGetTemplateContent'));
     }
   } catch (error) {
     console.error('获取模板内容失败:', error);
-    message.warning('获取模板内容失败: ' + (error.message || '未知错误'));
-    templateContent.nodes = [];
+    message.warning(t('contentReview.failedToGetTemplateContent'));
   }
 };
 
 // 处理审核
 const handleReview = async () => {
   if (!reviewForm.status) {
-    message.warning('请选择审核结果');
+    message.warning(t('contentReview.pleaseSelectReviewResult'));
     return;
   }
   
-  const statusText = reviewForm.status === 6 ? '通过审核' : '退回修改';
+  const statusText = reviewForm.status === 6 ? t('contentReview.approveReview') : t('contentReview.returnForRevision');
+  const isApproval = reviewForm.status === 6; // 判断是否为批准操作
   
   Modal.confirm({
-    title: '确认审核',
-    content: `确定要${statusText}吗？`,
-    okText: '确认',
-    cancelText: '取消',
+    title: t('contentReview.confirmReview'),
+    content: t('contentReview.confirmReviewAction', { action: statusText }),
+    okText: t('contentReview.confirm'),
+    cancelText: t('contentReview.cancel'),
     onOk: async () => {
       submittingReview.value = true;
       try {
-        console.log('开始审核:', {
-          id: recordId,
-          status: reviewForm.status,
-          remarks: reviewForm.remarks
-        });
-        
-        const response = await userTemplateAPI.reviewTemplate(
+        const response = await userTemplateAPI.updateTemplateStatus(
           recordId,
           reviewForm.status,
-          reviewForm.remarks
+          reviewForm.remarks || (reviewForm.status === 7 ? t('contentReview.returnForRevision') : t('contentReview.approveReview'))
         );
         
-        console.log('审核响应:', response);
-        
         if (response && response.code === 200) {
-          message.success(`${statusText}成功`);
-          // 重新获取记录信息以更新状态
-          await fetchRecordInfo();
-          // 重置审核表单
-          resetReviewForm();
+          message.success(t('contentReview.reviewSuccessMessage', { action: statusText }));
+          
+          // 如果是批准操作，延迟1.5秒后跳转到任务看板
+          if (isApproval) {
+            setTimeout(() => {
+              router.push('/admin/task-board');
+            }, 1500);
+          } else {
+            // 如果是退回操作，重新获取记录信息以更新状态
+            await fetchRecordInfo();
+            // 重置审核表单
+            resetReviewForm();
+          }
         } else {
-          throw new Error(response?.message || '审核失败');
+          throw new Error(response?.message || t('contentReview.reviewFailed'));
         }
       } catch (error) {
         console.error('审核失败:', error);
-        message.error('审核失败: ' + (error.message || '未知错误'));
+        message.error(t('contentReview.reviewFailed') + (error.message || t('contentReview.unknownError')));
       } finally {
         submittingReview.value = false;
       }

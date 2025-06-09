@@ -7,7 +7,7 @@
           <a-col :xs="24" :sm="8">
             <a-card class="statistic-card">
               <a-statistic
-                title="申请总数"
+                :title="$t('applicationManagement.totalApplications')"
                 :value="statistics.totalApplications || 0"
                 :value-style="{ color: '#1890ff' }"
               >
@@ -20,7 +20,7 @@
           <a-col :xs="24" :sm="8">
             <a-card class="statistic-card">
               <a-statistic
-                title="待处理申请"
+                :title="$t('applicationManagement.pendingApplications')"
                 :value="statistics.pendingCount || 0"
                 :value-style="{ color: '#faad14' }"
               >
@@ -33,7 +33,7 @@
           <a-col :xs="24" :sm="8">
             <a-card class="statistic-card">
               <a-statistic
-                title="已完成申请"
+                :title="$t('applicationManagement.completedApplications')"
                 :value="statistics.approvedCount || 0"
                 :value-style="{ color: '#52c41a' }"
               >
@@ -47,33 +47,41 @@
       </div>
 
       <!-- 申请列表 -->
-      <a-card class="app-list-card" :bordered="false" title="申请列表">
+      <a-card
+        class="app-list-card"
+        :bordered="false"
+        :title="$t('applicationManagement.applicationList')"
+      >
         <template #extra>
           <a-space>
             <a-input-search
               v-model:value="filters.templateName"
-              placeholder="搜索模板名称"
+              :placeholder="$t('applicationManagement.searchTemplateName')"
               style="width: 200px"
               @search="fetchApplications"
             />
             <a-select
               v-model:value="filters.status"
-              placeholder="状态筛选"
+              :placeholder="$t('applicationManagement.statusFilter')"
               style="width: 120px"
               allowClear
               @change="fetchApplications"
             >
-              <a-select-option v-for="option in statusOptions" :key="option.value" :value="option.value">
+              <a-select-option
+                v-for="option in statusOptions"
+                :key="option.value"
+                :value="option.value"
+              >
                 {{ option.label }}
               </a-select-option>
             </a-select>
             <a-button type="primary" @click="fetchApplications">
               <template #icon><SearchOutlined /></template>
-              搜索
+              {{ $t("common.search") }}
             </a-button>
             <a-button @click="resetFilters">
               <template #icon><ReloadOutlined /></template>
-              重置
+              {{ $t("common.reset") }}
             </a-button>
           </a-space>
         </template>
@@ -90,18 +98,20 @@
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'status'">
               <a-tag :color="getStatusColor(record.status)">
-                {{ record.statusDesc }}
+                {{ t(`status.${record.status}`) }}
               </a-tag>
             </template>
             <template v-if="column.key === 'actions'">
               <a-space>
-                <a-button 
-                  type="link" 
+                <a-button
+                  type="link"
                   @click="handleReview(record)"
                   :disabled="!canReviewApplication(record.status)"
-                  :class="{ 'disabled-btn': !canReviewApplication(record.status) }"
+                  :class="{
+                    'disabled-btn': !canReviewApplication(record.status),
+                  }"
                 >
-                  审核
+                  {{ $t("applicationManagement.review") }}
                 </a-button>
               </a-space>
             </template>
@@ -113,21 +123,25 @@
     <!-- 审核对话框 -->
     <a-modal
       v-model:open="reviewModalVisible"
-      title="申请审核"
+      :title="$t('applicationManagement.applicationReview')"
       @ok="confirmReview"
       :confirm-loading="submitting"
     >
       <a-form :model="reviewForm" layout="vertical">
-        <a-form-item label="审核结果">
+        <a-form-item :label="$t('applicationManagement.reviewResult')">
           <a-radio-group v-model:value="reviewForm.status">
-            <a-radio :value="1">通过申请</a-radio>
-            <a-radio :value="2">拒绝申请</a-radio>
+            <a-radio :value="1">{{
+              $t("applicationManagement.approveApplication")
+            }}</a-radio>
+            <a-radio :value="2">{{
+              $t("applicationManagement.rejectApplication")
+            }}</a-radio>
           </a-radio-group>
         </a-form-item>
-        <a-form-item label="审核意见">
-          <a-textarea 
-            v-model:value="reviewForm.remarks" 
-            placeholder="请输入审核意见"
+        <a-form-item :label="$t('applicationManagement.reviewComments')">
+          <a-textarea
+            v-model:value="reviewForm.remarks"
+            :placeholder="$t('applicationManagement.reviewCommentsPlaceholder')"
             :rows="4"
           />
         </a-form-item>
@@ -137,25 +151,27 @@
 </template>
 
 <script setup>
-import { userTemplateAPI } from '@/api';
+import { userTemplateAPI } from "@/api";
 import {
 CheckCircleOutlined,
 ClockCircleOutlined,
 FileOutlined,
 ReloadOutlined,
-SearchOutlined
-} from '@ant-design/icons-vue';
-import { message } from 'ant-design-vue';
-import { onMounted, reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+SearchOutlined,
+} from "@ant-design/icons-vue";
+import { message } from "ant-design-vue";
+import { computed, onMounted, reactive, ref } from "vue";
+import { useI18n } from "vue-i18n";
+import { useRouter } from "vue-router";
 
 const router = useRouter();
+const { t } = useI18n();
 
 // 统计数据
 const statistics = ref({
   totalApplications: 0,
   pendingCount: 0,
-  approvedCount: 0
+  approvedCount: 0,
 });
 
 // 表格加载状态
@@ -167,16 +183,25 @@ const reviewModalVisible = ref(false);
 const currentRecord = ref(null);
 const reviewForm = reactive({
   status: 1,
-  remarks: ''
+  remarks: "",
 });
 
-// 状态选项
-const statusOptions = ref([]);
+// 状态选项 - 改为computed属性以支持语言切换
+const statusOptions = computed(() => [
+  { value: "0", label: t("status.0") },
+  { value: "1", label: t("status.1") },
+  { value: "2", label: t("status.2") },
+  { value: "3", label: t("status.3") },
+  { value: "4", label: t("status.4") },
+  { value: "5", label: t("status.5") },
+  { value: "6", label: t("status.6") },
+  { value: "7", label: t("status.7") },
+]);
 
 // 筛选条件
 const filters = reactive({
   status: undefined,
-  templateName: ''
+  templateName: "",
 });
 
 // 分页配置
@@ -186,60 +211,60 @@ const pagination = reactive({
   total: 0,
   showSizeChanger: true,
   showQuickJumper: true,
-  showTotal: (total) => `共 ${total} 条数据`
+  showTotal: (total) => t("applicationManagement.totalData", { total }),
 });
 
-// 表格列定义
-const columns = [
+// 表格列定义 - 改为computed属性以支持语言切换
+const columns = computed(() => [
   {
-    title: '编号',
-    dataIndex: 'id',
-    key: 'id',
-    width: 100
+    title: t("applicationManagement.serialNumber"),
+    dataIndex: "id",
+    key: "id",
+    width: 100,
   },
   {
-    title: '用户',
-    dataIndex: 'userName',
-    key: 'userName',
-    width: 150
+    title: t("applicationManagement.user"),
+    dataIndex: "userName",
+    key: "userName",
+    width: 150,
   },
   {
-    title: '模板编号',
-    dataIndex: 'templateCode',
-    key: 'templateCode',
-    width: 150
+    title: t("applicationManagement.templateCode"),
+    dataIndex: "templateCode",
+    key: "templateCode",
+    width: 150,
   },
   {
-    title: '模板名称',
-    dataIndex: 'templateName',
-    key: 'templateName',
-    width: 180
+    title: t("applicationManagement.templateName"),
+    dataIndex: "templateName",
+    key: "templateName",
+    width: 180,
   },
   {
-    title: '状态',
-    dataIndex: 'statusDesc',
-    key: 'status',
-    width: 120
+    title: t("common.status"),
+    dataIndex: "status",
+    key: "status",
+    width: 120,
   },
   {
-    title: '创建时间',
-    dataIndex: 'createTime',
-    key: 'createTime',
-    width: 180
+    title: t("common.createTime"),
+    dataIndex: "createTime",
+    key: "createTime",
+    width: 180,
   },
   {
-    title: '更新时间',
-    dataIndex: 'updateTime',
-    key: 'updateTime',
-    width: 180
+    title: t("common.updateTime"),
+    dataIndex: "updateTime",
+    key: "updateTime",
+    width: 180,
   },
   {
-    title: '操作',
-    key: 'actions',
+    title: t("common.actions"),
+    key: "actions",
     width: 200,
-    fixed: 'right'
-  }
-];
+    fixed: "right",
+  },
+]);
 
 // 表格数据
 const applicationData = ref([]);
@@ -247,34 +272,22 @@ const applicationData = ref([]);
 // 获取状态颜色
 const getStatusColor = (status) => {
   const statusMap = {
-    0: 'default',   // 待审核
-    1: 'blue',      // 申请通过
-    2: 'red',       // 拒绝申请
-    3: 'orange',    // 待填写
-    4: 'purple',    // 填写中
-    5: 'processing', // 审核中
-    6: 'success',   // 审核通过
-    7: 'error',     // 退回
+    0: "default", // 待审核
+    1: "blue", // 申请通过
+    2: "red", // 拒绝申请
+    3: "orange", // 待填写
+    4: "purple", // 填写中
+    5: "processing", // 审核中
+    6: "success", // 审核通过
+    7: "error", // 退回
   };
-  return statusMap[status] || 'default';
+  return statusMap[status] || "default";
 };
 
 // 检查是否可以进行申请审核操作
 const canReviewApplication = (status) => {
   // 只有状态为待审核(0)的任务才能进行申请审核
   return Number(status) === 0;
-};
-
-// 获取状态选项
-const fetchStatusOptions = async () => {
-  try {
-    const response = await userTemplateAPI.getStatusOptions();
-    if (response && response.code === 200 && response.data) {
-      statusOptions.value = response.data;
-    }
-  } catch (error) {
-    console.error('获取状态选项失败:', error);
-  }
 };
 
 // 获取统计数据
@@ -285,15 +298,15 @@ const fetchStatistics = async () => {
       statistics.value = response.data;
     }
   } catch (error) {
-    console.error('获取统计数据失败:', error);
-    message.error('获取统计数据失败');
+    console.error("获取统计数据失败:", error);
+    message.error(t("applicationManagement.getStatisticsFailed"));
   }
 };
 
 // 重置筛选条件
 const resetFilters = () => {
   filters.status = undefined;
-  filters.templateName = '';
+  filters.templateName = "";
   fetchApplications();
 };
 
@@ -304,50 +317,46 @@ const handleTableChange = (pag) => {
   fetchApplications();
 };
 
-// 从API获取申请数据
+// 获取申请数据
 const fetchApplications = async () => {
   loading.value = true;
   try {
-    // 过滤参数，默认只获取状态为待审核(0)的记录
     const params = {
       pageNum: pagination.current,
       pageSize: pagination.pageSize,
-      status: filters.status !== undefined ? filters.status : 0, // 默认只显示待审核状态
-      templateName: filters.templateName || undefined,
-      userId: 'all' // 获取所有用户的申请
     };
-    
-    console.log('申请管理API请求参数:', JSON.stringify(params));
-    
-    // 使用userTemplateAPI获取数据
+
+    // 添加搜索条件
+    if (filters.templateName) {
+      params.templateName = filters.templateName;
+    }
+    if (filters.status !== undefined && filters.status !== '') {
+      params.status = filters.status;
+    }
+
     const response = await userTemplateAPI.getAppliedTemplateList(params);
-    console.log('申请管理API响应:', JSON.stringify(response));
-    
-    if (response && response.code === 200 && response.data) {
-      // 确保只获取申请记录 (状态 0、1、2)
-      applicationData.value = (response.data.content || []);
-      pagination.total = response.data.totalElements || 0;
-      console.log('成功获取申请数据，条数:', applicationData.value.length);
-      
-      // 打印申请记录的详细信息，帮助调试
-      if (applicationData.value.length > 0) {
-        console.log('申请记录示例:', JSON.stringify(applicationData.value[0]));
-      } else {
-        console.warn('申请列表为空');
+
+    if (response && response.code === 200) {
+      applicationData.value = (response.data.content || response.data.records || []).map(application => ({
+        ...application,
+        key: application.id
+      }));
+      pagination.total = response.data.totalElements || response.data.total || 0;
+
+      if (applicationData.value.length === 0) {
+        // 申请列表为空，但不需要console输出
       }
     } else {
-      console.warn('API返回异常:', response);
-      applicationData.value = [];
-      pagination.total = 0;
+      console.warn("API返回异常:", response);
+      message.error(t("applicationManagement.getApplicationsFailed"));
     }
   } catch (error) {
-    console.error('获取申请数据出错:', error);
+    console.error("获取申请数据出错:", error);
     if (error.response) {
-      console.error('错误状态码:', error.response.status);
-      console.error('错误详情:', error.response.data);
+      console.error("错误状态码:", error.response.status);
+      console.error("错误详情:", error.response.data);
     }
-    message.error('获取申请数据出错: ' + (error.message || '未知错误'));
-    applicationData.value = [];
+    message.error(t("applicationManagement.getApplicationsFailed"));
   } finally {
     loading.value = false;
   }
@@ -356,36 +365,36 @@ const fetchApplications = async () => {
 // 申请审核
 const handleReview = (record) => {
   if (!canReviewApplication(record.status)) return;
-  
+
   currentRecord.value = record;
   reviewForm.status = 1; // 默认选择通过
-  reviewForm.remarks = '';
+  reviewForm.remarks = "";
   reviewModalVisible.value = true;
 };
 
 // 确认审核
 const confirmReview = async () => {
   if (!currentRecord.value) return;
-  
+
   submitting.value = true;
   try {
-    console.log(`Processing application review for record:`, currentRecord.value.id);
-    console.log(`Sending application review with status: ${reviewForm.status}`);
-    
     const response = await userTemplateAPI.reviewApplication(
       currentRecord.value.id,
       reviewForm.status,
       reviewForm.remarks
     );
-    
-    console.log('Application review response:', response);
-    message.success('申请审核操作成功');
+
+    message.success(t("applicationManagement.reviewSuccess"));
     reviewModalVisible.value = false;
     fetchApplications(); // 刷新列表
     fetchStatistics(); // 刷新统计数据
   } catch (error) {
-    console.error('审核操作失败:', error);
-    message.error(`审核操作失败: ${error.message || '未知错误'}`);
+    console.error("审核操作失败:", error);
+    message.error(
+      t("applicationManagement.reviewFailed") +
+        ": " +
+        (error.message || t("filingApplication.unknown"))
+    );
   } finally {
     submitting.value = false;
   }
@@ -393,7 +402,6 @@ const confirmReview = async () => {
 
 // 页面加载时获取数据
 onMounted(() => {
-  fetchStatusOptions();
   fetchApplications();
   fetchStatistics();
 });
@@ -473,4 +481,4 @@ onMounted(() => {
 .disabled-btn:hover {
   color: rgba(0, 0, 0, 0.25) !important;
 }
-</style> 
+</style>

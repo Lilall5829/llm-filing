@@ -3,17 +3,17 @@
     <div class="application-review">
       <div class="header-container">
         <div class="title-section">
-          <h2 class="page-title">申请审核</h2>
+          <h2 class="page-title">{{ $t("applicationReview.title") }}</h2>
           <div class="user-info">
-            <a-tag color="blue">用户：{{ recordInfo.userName }}</a-tag>
-            <a-tag color="green">模板：{{ recordInfo.templateName }}</a-tag>
+            <a-tag color="blue">{{ $t("applicationReview.user") }}：{{ recordInfo.userName }}</a-tag>
+            <a-tag color="green">{{ $t("applicationReview.template") }}：{{ recordInfo.templateName }}</a-tag>
           </div>
         </div>
         <div class="actions-section">
           <a-space>
             <a-button @click="goBack">
               <template #icon><ArrowLeftOutlined /></template>
-              返回列表
+              {{ $t("applicationReview.backToList") }}
             </a-button>
           </a-space>
         </div>
@@ -21,46 +21,48 @@
 
       <a-spin :spinning="loading">
         <a-card class="info-card">
-          <a-descriptions title="申请信息" bordered :column="{ xxl: 3, xl: 3, lg: 3, md: 2, sm: 1, xs: 1 }">
-            <a-descriptions-item label="申请ID">{{ recordInfo.id || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="模板编号">{{ recordInfo.templateCode || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="模板名称">{{ recordInfo.templateName || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="申请用户">{{ recordInfo.userName || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="申请时间">{{ recordInfo.createTime || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="状态">
+          <a-descriptions :title="$t('applicationReview.applicationInfo')" bordered :column="{ xxl: 3, xl: 3, lg: 3, md: 2, sm: 1, xs: 1 }">
+            <a-descriptions-item :label="$t('applicationReview.applicationId')">{{ recordInfo.id || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('applicationReview.templateCode')">{{ recordInfo.templateCode || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('applicationReview.templateName')">{{ recordInfo.templateName || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('applicationReview.applicantUser')">{{ recordInfo.userName || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('applicationReview.applicationTime')">{{ recordInfo.createTime || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('applicationReview.status')">
               <a-tag :color="getStatusColor(recordInfo.status)">
-                {{ recordInfo.statusDesc || getStatusText(recordInfo.status) }}
+                {{ $t(`status.${recordInfo.status}`) }}
               </a-tag>
             </a-descriptions-item>
-            <a-descriptions-item label="最后更新">{{ recordInfo.updateTime || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="备注" :span="2">{{ recordInfo.remarks || '无' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('applicationReview.lastUpdate')">{{ recordInfo.updateTime || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('applicationReview.remarks')" :span="2">
+              {{ formatRemarkForDisplay(recordInfo.remarks) || $t('applicationReview.noRemarks') }}
+            </a-descriptions-item>
           </a-descriptions>
         </a-card>
 
         <a-card class="template-info-card" v-if="!loading && templateInfo.templateContent">
           <template #title>
             <div class="template-title">
-              <span>模板信息预览</span>
+              <span>{{ $t("applicationReview.templateInfoPreview") }}</span>
               <a-tag color="processing">{{ templateInfo.templateName }}</a-tag>
             </div>
           </template>
           
           <a-descriptions bordered :column="{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }">
-            <a-descriptions-item label="模板编号">{{ templateInfo.templateCode || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="模板类型">{{ templateInfo.templateType || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="创建时间">{{ templateInfo.createTime || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="最后更新">{{ templateInfo.updateTime || '-' }}</a-descriptions-item>
-            <a-descriptions-item label="模板描述" :span="2">{{ templateInfo.templateDescription || '无描述' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('applicationReview.templateCode')">{{ templateInfo.templateCode || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('applicationReview.templateType')">{{ templateInfo.templateType || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('applicationReview.createTime')">{{ templateInfo.createTime || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('applicationReview.lastUpdate')">{{ templateInfo.updateTime || '-' }}</a-descriptions-item>
+            <a-descriptions-item :label="$t('applicationReview.templateDescription')" :span="2">{{ templateInfo.templateDescription || $t('applicationReview.noDescription') }}</a-descriptions-item>
           </a-descriptions>
 
-          <a-divider>模板结构</a-divider>
+          <a-divider>{{ $t("applicationReview.templateStructure") }}</a-divider>
           
           <div class="template-structure" v-if="templateStructure.length > 0">
             <a-collapse v-model:activeKey="activeKeys" ghost>
               <a-collapse-panel 
                 v-for="(section, index) in templateStructure" 
                 :key="index"
-                :header="`${section.name} (${section.fieldCount} 个字段)`"
+                :header="$t('applicationReview.sectionHeader', { name: section.name, count: section.fieldCount })"
               >
                 <a-table 
                   :columns="fieldColumns" 
@@ -73,31 +75,31 @@
           </div>
           
           <div v-else class="empty-structure">
-            <a-empty description="暂无模板结构信息" />
+            <a-empty :description="$t('applicationReview.noTemplateStructure')" />
           </div>
         </a-card>
 
         <div class="review-section" v-if="!loading && canReviewApplication(recordInfo.status)">
-          <a-card title="审核操作">
+          <a-card :title="$t('applicationReview.reviewAction')">
             <a-alert 
-              message="审核说明" 
-              description="通过申请后，用户将能够填写此模板的内容；拒绝申请后，用户需要重新申请。"
+              :message="$t('applicationReview.reviewInstructions')" 
+              :description="$t('applicationReview.reviewInstructionsDescription')"
               type="info" 
               show-icon 
               style="margin-bottom: 24px;"
             />
             
             <a-form :model="reviewForm" layout="vertical">
-              <a-form-item label="审核结果" required>
+              <a-form-item :label="$t('applicationReview.reviewResult')" required>
                 <a-radio-group v-model:value="reviewForm.status">
-                  <a-radio :value="3">通过申请</a-radio>
-                  <a-radio :value="2">拒绝申请</a-radio>
+                  <a-radio :value="3">{{ $t("applicationReview.approveApplication") }}</a-radio>
+                  <a-radio :value="2">{{ $t("applicationReview.rejectApplication") }}</a-radio>
                 </a-radio-group>
               </a-form-item>
-              <a-form-item label="审核意见">
+              <a-form-item :label="$t('applicationReview.reviewComment')">
                 <a-textarea 
                   v-model:value="reviewForm.remarks" 
-                  placeholder="请输入审核意见（可选）"
+                  :placeholder="$t('applicationReview.pleaseInputReviewComment')"
                   :rows="4"
                 />
               </a-form-item>
@@ -110,10 +112,10 @@
                     :disabled="!reviewForm.status"
                   >
                     <template #icon><CheckOutlined /></template>
-                    {{ reviewForm.status === 3 ? '通过申请' : '拒绝申请' }}
+                    {{ reviewForm.status === 3 ? $t("applicationReview.approveApplication") : $t("applicationReview.rejectApplication") }}
                   </a-button>
                   <a-button @click="resetReviewForm">
-                    重置
+                    {{ $t("applicationReview.reset") }}
                   </a-button>
                 </a-space>
               </a-form-item>
@@ -123,7 +125,7 @@
 
         <div class="readonly-notice" v-else-if="!loading">
           <a-alert 
-            message="提示" 
+            :message="$t('applicationReview.notice')" 
             :description="getReadonlyReason(recordInfo.status)"
             type="info" 
             show-icon 
@@ -136,16 +138,19 @@
 
 <script setup>
 import { userTemplateAPI } from '@/api';
+import { formatRemarkForDisplay } from '@/utils/remarkUtils';
 import {
 ArrowLeftOutlined,
 CheckOutlined
 } from '@ant-design/icons-vue';
 import { message, Modal } from 'ant-design-vue';
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
 const route = useRoute();
 const router = useRouter();
+const { t } = useI18n();
 const recordId = route.query.id;
 
 const loading = ref(true);
@@ -187,43 +192,33 @@ const reviewForm = reactive({
 });
 
 // 字段表格列定义
-const fieldColumns = [
+const fieldColumns = computed(() => [
   {
-    title: '字段名称',
+    title: t('applicationReview.fieldName'),
     dataIndex: 'label',
     key: 'label',
   },
   {
-    title: '字段类型',
+    title: t('applicationReview.fieldType'),
     dataIndex: 'type',
     key: 'type',
   },
   {
-    title: '是否必填',
+    title: t('applicationReview.isRequired'),
     dataIndex: 'required',
     key: 'required',
-    render: (required) => required ? '是' : '否'
+    render: (required) => required ? t('applicationReview.yes') : t('applicationReview.no')
   },
   {
-    title: '示例/说明',
+    title: t('applicationReview.exampleDescription'),
     dataIndex: 'example',
     key: 'example',
   }
-];
+]);
 
 // 获取状态文本
 const getStatusText = (status) => {
-  const statusMap = {
-    0: '待审核',
-    1: '申请通过',
-    2: '拒绝申请',
-    3: '待填写',
-    4: '填写中',
-    5: '审核中',
-    6: '审核通过',
-    7: '退回'
-  };
-  return statusMap[Number(status)] || '未知';
+  return t(`status.${Number(status)}`);
 };
 
 // 获取状态颜色
@@ -250,13 +245,13 @@ const canReviewApplication = (status) => {
 const getReadonlyReason = (status) => {
   const statusNum = Number(status);
   if (statusNum === 1 || statusNum === 3) {
-    return '该申请已通过审核。';
+    return t('applicationReview.alreadyApproved');
   } else if (statusNum === 2) {
-    return '该申请已被拒绝。';
+    return t('applicationReview.alreadyRejected');
   } else if (statusNum > 3) {
-    return '用户已开始填写模板内容，无法修改申请状态。';
+    return t('applicationReview.userStartedFilling');
   } else {
-    return '当前状态不支持申请审核操作。';
+    return t('applicationReview.statusNotSupported');
   }
 };
 
@@ -293,7 +288,7 @@ const parseTemplateStructure = (templateContent) => {
             if (fieldGroup.row && Array.isArray(fieldGroup.row)) {
               fieldGroup.row.forEach((field) => {
                 fields.push({
-                  label: field.label || '未命名字段',
+                  label: field.label || t('applicationReview.unnamedField'),
                   type: field.type || 'text',
                   required: field.required || false,
                   example: field.example || field.guide || '-'
@@ -305,7 +300,7 @@ const parseTemplateStructure = (templateContent) => {
         }
         
         structure.push({
-          name: section.name || `节点${index + 1}`,
+          name: section.name || t('applicationReview.node', { index: index + 1 }),
           fields: fields,
           fieldCount: fieldCount
         });
@@ -318,7 +313,7 @@ const parseTemplateStructure = (templateContent) => {
         if (node.fields && Array.isArray(node.fields)) {
           node.fields.forEach((field) => {
             fields.push({
-              label: field.label || '未命名字段',
+              label: field.label || t('applicationReview.unnamedField'),
               type: field.type || 'text',
               required: field.required || false,
               example: field.example || field.guide || '-'
@@ -328,7 +323,7 @@ const parseTemplateStructure = (templateContent) => {
         }
         
         structure.push({
-          name: node.name || '未命名节点',
+          name: node.name || t('applicationReview.unnamedNode'),
           fields: fields,
           fieldCount: fieldCount
         });
@@ -345,7 +340,7 @@ const parseTemplateStructure = (templateContent) => {
 // 获取记录详情
 const fetchRecordInfo = async () => {
   if (!recordId) {
-    message.error('记录ID不能为空');
+    message.error(t('applicationReview.recordIdCannotBeEmpty'));
     goBack();
     return;
   }
@@ -358,11 +353,9 @@ const fetchRecordInfo = async () => {
       id: recordId
     });
 
-    console.log('获取记录详情响应:', JSON.stringify(response));
-    
     if (!response || response.code !== 200) {
       console.error('API返回错误状态:', response);
-      message.error('获取记录信息失败: ' + (response?.message || 'API返回错误状态'));
+      message.error(t('applicationReview.failedToGetRecordInfo') + (response?.message || t('applicationReview.apiReturnError')));
       goBack();
       return;
     }
@@ -377,19 +370,18 @@ const fetchRecordInfo = async () => {
     }
     
     if (recordData && recordData.id) {
-      console.log('获取到记录数据:', JSON.stringify(recordData));
       Object.assign(recordInfo, recordData);
       
       // 获取模板定义信息
       await fetchTemplateInfo();
     } else {
       console.error('未找到记录数据:', response);
-      message.error('未找到该记录');
+      message.error(t('applicationReview.recordNotFound'));
       goBack();
     }
   } catch (error) {
     console.error('获取记录信息失败:', error);
-    message.error('获取记录信息失败: ' + (error.message || '未知错误'));
+    message.error(t('applicationReview.failedToGetRecordInfo') + (error.message || t('applicationReview.unknownError')));
     goBack();
   } finally {
     loading.value = false;
@@ -404,10 +396,7 @@ const fetchTemplateInfo = async () => {
   }
 
   try {
-    console.log('开始获取模板信息: templateId =', recordInfo.templateId);
-    
     const response = await userTemplateAPI.getTemplateDefinition(recordInfo.templateId);
-    console.log('获取模板信息响应:', JSON.stringify(response));
     
     if (response && response.code === 200 && response.data) {
       Object.assign(templateInfo, response.data);
@@ -415,61 +404,52 @@ const fetchTemplateInfo = async () => {
       // 解析模板结构
       if (templateInfo.templateContent) {
         templateStructure.value = parseTemplateStructure(templateInfo.templateContent);
-        console.log('解析模板结构完成:', templateStructure.value.length, '个节点');
       }
     } else {
       console.warn('获取模板信息失败:', response);
-      message.warning('无法获取模板详细信息');
+      message.warning(t('applicationReview.unableToGetTemplateInfo'));
     }
   } catch (error) {
     console.error('获取模板信息失败:', error);
-    message.warning('获取模板信息失败: ' + (error.message || '未知错误'));
+    message.warning(t('applicationReview.failedToGetTemplateInfo') + (error.message || t('applicationReview.unknownError')));
   }
 };
 
 // 处理审核
 const handleReview = async () => {
   if (!reviewForm.status) {
-    message.warning('请选择审核结果');
+    message.warning(t('applicationReview.pleaseSelectReviewResult'));
     return;
   }
   
-  const statusText = reviewForm.status === 3 ? '通过申请' : '拒绝申请';
+  const statusText = reviewForm.status === 3 ? t('applicationReview.approveApplication') : t('applicationReview.rejectApplication');
   
   Modal.confirm({
-    title: '确认审核',
-    content: `确定要${statusText}吗？`,
-    okText: '确认',
-    cancelText: '取消',
+    title: t('applicationReview.confirmReview'),
+    content: t('applicationReview.confirmReviewAction', { action: statusText }),
+    okText: t('applicationReview.confirm'),
+    cancelText: t('applicationReview.cancel'),
     onOk: async () => {
       submittingReview.value = true;
       try {
-        console.log('开始审核:', {
-          id: recordId,
-          status: reviewForm.status,
-          remarks: reviewForm.remarks
-        });
-        
         const response = await userTemplateAPI.updateTemplateStatus(
           recordId,
           reviewForm.status,
-          reviewForm.remarks || (reviewForm.status === 2 ? '拒绝申请' : '通过申请，设置为待填写状态')
+          reviewForm.remarks || (reviewForm.status === 2 ? t('applicationReview.rejectApplication') : t('applicationReview.approveApplicationSetWaitingStatus'))
         );
         
-        console.log('审核响应:', response);
-        
         if (response && response.code === 200) {
-          message.success(`${statusText}成功`);
+          message.success(t('applicationReview.reviewSuccessMessage', { action: statusText }));
           // 重新获取记录信息以更新状态
           await fetchRecordInfo();
           // 重置审核表单
           resetReviewForm();
         } else {
-          throw new Error(response?.message || '审核失败');
+          throw new Error(response?.message || t('applicationReview.reviewFailed'));
         }
       } catch (error) {
         console.error('审核失败:', error);
-        message.error('审核失败: ' + (error.message || '未知错误'));
+        message.error(t('applicationReview.reviewFailed') + (error.message || t('applicationReview.unknownError')));
       } finally {
         submittingReview.value = false;
       }

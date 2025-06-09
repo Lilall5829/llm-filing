@@ -1,73 +1,70 @@
 import request from "./auth";
 
 // 分页获取已申请的模板列表
-export function getAppliedTemplateList(params) {
-  return request({
-    url: "/api/userTemplate/page",
-    method: "get",
-    params,
-  });
-}
+export const getAppliedTemplateList = async (params = {}) => {
+  try {
+    const response = await request.get("/api/userTemplate/page", { params });
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
 
 // 用户申请模板或管理员发送模板
-export function applyTemplate(templateId, userIds) {
-  // 构造请求数据
-  const requestData = {
-    userIds: userIds, // 使用具体的登录名，让后端处理转换
-  };
-
-  console.log("申请模板参数:", { templateId, requestData });
-
-  return request({
-    url: "/api/userTemplate/applyTemplate",
-    method: "post",
-    params: { templateId },
-    data: requestData,
-    timeout: 10000, // 增加超时时间
-  })
-    .then((response) => {
-      console.log("申请模板成功:", response);
-      return response;
-    })
-    .catch((error) => {
-      console.error("申请模板失败:", error);
-      if (error.response && error.response.data) {
-        console.error("错误详情:", error.response.data);
+export const applyTemplate = async (templateId, userIds = []) => {
+  try {
+    const response = await request.post(
+      "/api/userTemplate/applyTemplate",
+      userIds.length > 0 ? { userIds } : {},
+      {
+        params: { templateId },
+        headers: {
+          "Content-Type": "application/json",
+        },
       }
-      throw error;
-    });
-}
+    );
+    return response;
+  } catch (error) {
+    console.error("申请模板失败:", error);
+    if (error.response) {
+      console.error("错误详情:", error.response.data);
+    }
+    throw error;
+  }
+};
 
 // 获取当前用户的模板内容
-export function getTemplateContent(id) {
-  return request({
-    url: "/api/userTemplate/getTemplateContent",
-    method: "get",
-    params: { id },
-  });
-}
+export const getTemplateContent = async (id) => {
+  try {
+    const response = await request.get(
+      `/api/userTemplate/getTemplateContent?id=${id}`
+    );
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
 
 // 保存用户填写的模板内容
-export function saveTemplateContent(id, content, status) {
-  // 根据OpenAPI规范，saveTemplateContent接口不支持status参数
-  // 但我们可以在content中添加提交状态信息
-  console.log("保存模板内容 - ID:", id);
-  console.log("保存模板内容 - 数据类型:", typeof content);
-  console.log(
-    "保存模板内容 - 数据前10个字符:",
-    content.substring(0, 10) + "..."
-  );
+export const saveTemplateContent = async (id, content) => {
+  try {
+    // 修复参数传递 - id作为查询参数，content作为请求体
+    const response = await request.post(
+      "/api/userTemplate/saveTemplateContent",
+      content, // 直接传递content对象作为请求体
+      {
+        params: { id }, // id作为查询参数
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
 
-  return request({
-    url: "/api/userTemplate/saveTemplateContent",
-    method: "post",
-    params: { id },
-    data: content,
-    headers: {
-      "Content-Type": "application/json", // 确保内容类型为JSON
-    },
-  });
-}
+    return response;
+  } catch (error) {
+    throw error;
+  }
+};
 
 // 管理员审核用户提交的模板
 export function reviewTemplate(id, status, remarks) {
